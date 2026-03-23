@@ -1,0 +1,13 @@
+com\mtg\deckbuilder\auth\RegisterRequest.class
+com\mtg\deckbuilder\auth\AuthController.class
+com\mtg\deckbuilder\auth\AuthServiceApplication.class
+com\mtg\deckbuilder\auth\UserPrincipal.class
+com\mtg\deckbuilder\auth\AuthResponse.class
+com\mtg\deckbuilder\auth\JwtService.class
+com\mtg\deckbuilder\auth\SecurityConfig.class
+com\mtg\deckbuilder\auth\JwtAuthenticationFilter.class
+com\mtg\deckbuilder\auth\UserRepository.class
+com\mtg\deckbuilder\user\UserEntity.class
+com\mtg\deckbuilder\auth\CustomUserDetailsService.class
+com\mtg\deckbuilder\auth\LoginRequest.class
+com\mtg\deckbuilder\user\UserRepository.class

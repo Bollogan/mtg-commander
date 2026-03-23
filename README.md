@@ -71,3 +71,15 @@ export default defineConfig([
   },
 ])
 ```
+
+## Backend (Maven + Java)
+
+The backend lives in [backend/](backend/README.md) and is a Spring Boot app.
+
+From the backend folder:
+
+- `mvn spring-boot:run`
+
+Health endpoint:
+
+- `http://localhost:8080/api/health`

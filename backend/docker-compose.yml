@@ -1,0 +1,15 @@
+version: "3.9"
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mtg-deck-builder-postgres
+    environment:
+      POSTGRES_DB: mtg_deck_builder
+      POSTGRES_USER: mtg
+      POSTGRES_PASSWORD: mtg
+    ports:
+      - "5432:5432"
+    volumes:
+      - mtg_deck_builder_data:/var/lib/postgresql/data
+volumes:
+  mtg_deck_builder_data:

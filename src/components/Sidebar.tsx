@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Button, Container, Nav, Navbar, Offcanvas } from 'react-bootstrap';
 
 interface SidebarProps {
   currentView: 'search' | 'decks' | 'new-deck';
@@ -6,45 +7,60 @@ interface SidebarProps {
 }
 
 export const Sidebar = ({ currentView, onViewChange }: SidebarProps) => {
-  const [isOpen, setIsOpen] = useState(true);
+  const [show, setShow] = useState(false);
 
   return (
-    <aside className={`sidebar ${isOpen ? 'open' : 'closed'}`}>
-      <div className="sidebar-header">
-        <h2>MTG Builder</h2>
-        <button className="toggle-btn" onClick={() => setIsOpen(!isOpen)}>
-          {isOpen ? '◄' : '►'}
-        </button>
-      </div>
-
-      <nav className="sidebar-nav">
-        <button
-          className={`nav-item ${currentView === 'search' ? 'active' : ''}`}
-          onClick={() => onViewChange('search')}
+    <Navbar bg="dark" variant="dark" expand="lg" className="app-navbar" sticky="top">
+      <Container fluid>
+        <Navbar.Brand>MTG Builder</Navbar.Brand>
+        <Navbar.Toggle aria-controls="mtg-offcanvas" onClick={() => setShow(true)} />
+        <Navbar.Offcanvas
+          id="mtg-offcanvas"
+          placement="start"
+          show={show}
+          onHide={() => setShow(false)}
         >
-          <span className="icon">🔍</span> {isOpen && (<h3>Buscar Cartas</h3>)}
-        </button>
-
-        <button
-          className={`nav-item ${currentView === 'decks' ? 'active' : ''}`}
-          onClick={() => onViewChange('decks')}
-        >
-          <span className="icon">📚</span> {isOpen && (<h3>Mis Mazos</h3>)}
-        </button>
-
-        <button
-          className={`nav-item ${currentView === 'new-deck' ? 'active' : ''}`}
-          onClick={() => onViewChange('new-deck')}
-        >
-          <span className="icon">➕</span> {isOpen && (<h3>Nuevo Mazo</h3>)}
-        </button>
-
-        <div className="sidebar-footer">
-          <button className="login-btn">
-            <span className="icon">👤</span> Inicia sesión
-          </button>
-        </div>
-      </nav>
-    </aside>
+          <Offcanvas.Header closeButton>
+            <Offcanvas.Title>MTG Builder</Offcanvas.Title>
+          </Offcanvas.Header>
+          <Offcanvas.Body>
+            <Nav className="flex-column gap-2">
+              <Button
+                variant={currentView === 'search' ? 'warning' : 'outline-light'}
+                onClick={() => {
+                  onViewChange('search');
+                  setShow(false);
+                }}
+              >
+                🔍 Buscar Cartas
+              </Button>
+              <Button
+                variant={currentView === 'decks' ? 'warning' : 'outline-light'}
+                onClick={() => {
+                  onViewChange('decks');
+                  setShow(false);
+                }}
+              >
+                📚 Mis Mazos
+              </Button>
+              <Button
+                variant={currentView === 'new-deck' ? 'warning' : 'outline-light'}
+                onClick={() => {
+                  onViewChange('new-deck');
+                  setShow(false);
+                }}
+              >
+                ➕ Nuevo Mazo
+              </Button>
+              <div className="mt-3 pt-3 border-top border-secondary">
+                <Button variant="outline-info" className="w-100">
+                  👤 Inicia sesión
+                </Button>
+              </div>
+            </Nav>
+          </Offcanvas.Body>
+        </Navbar.Offcanvas>
+      </Container>
+    </Navbar>
   );
 };

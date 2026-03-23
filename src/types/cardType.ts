@@ -28,4 +28,7 @@ export interface Card {
     usd?: string;
     eur?: string;
   };
+  related_uris?: {
+    [key: string]: string;
+  };
 }

@@ -1,0 +1,9 @@
+com\mtg\deckbuilder\deck\DeckSummaryDto.class
+com\mtg\deckbuilder\deck\DeckController.class
+com\mtg\deckbuilder\deck\DeckVisibility.class
+com\mtg\deckbuilder\deck\DeckRequest.class
+com\mtg\deckbuilder\deck\DeckCardEntity.class
+com\mtg\deckbuilder\deck\DeckCardRepository.class
+com\mtg\deckbuilder\deck\DeckEntity.class
+com\mtg\deckbuilder\deck\DeckRepository.class
+com\mtg\deckbuilder\deck\DeckServiceApplication.class

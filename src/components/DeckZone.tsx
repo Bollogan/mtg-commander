@@ -1,3 +1,4 @@
+import { Badge, Button, Card, Col, ListGroup, Row, Stack } from 'react-bootstrap';
 import { useDeckStore } from '../stores/deckStore';
 
 export const DeckZone = () => {
@@ -7,25 +8,15 @@ export const DeckZone = () => {
 
   if (!currentDeck) {
     return (
-      <div style={{ textAlign: 'center', padding: '40px', background: '#2a2a2a', borderRadius: '8px' }}>
-        <h3>No hay mazo seleccionado</h3>
-        <p>Crea uno para empezar a construir tu deck Commander.</p>
-        <button
-          onClick={() => createDeck('Nuevo Mazo Commander')}
-          style={{
-            background: '#4CAF50',
-            color: 'white',
-            border: 'none',
-            padding: '12px 24px',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            marginTop: '16px',
-            fontSize: '16px',
-          }}
-        >
-          Crear Nuevo Mazo
-        </button>
-      </div>
+      <Card className="text-center deck-card">
+        <Card.Body>
+          <Card.Title>No hay mazo seleccionado</Card.Title>
+          <Card.Text>Crea uno para empezar a construir tu deck Commander.</Card.Text>
+          <Button variant="success" onClick={() => createDeck('Nuevo Mazo Commander')}>
+            Crear Nuevo Mazo
+          </Button>
+        </Card.Body>
+      </Card>
     );
   }
 
@@ -37,40 +28,55 @@ export const DeckZone = () => {
                     (commander ? commander.quantity : 0);
 
   return (
-    <div style={{ marginTop: '40px' }}>
-      <h2>{name} ({totalCards} cartas)</h2>
+    <div className="deck-zone">
+      <Stack direction="horizontal" className="mb-3" gap={2}>
+        <h2 className="mb-0">{name}</h2>
+        <Badge bg="secondary">{totalCards} cartas</Badge>
+      </Stack>
 
-      {/* Comandante destacado */}
       {commander && (
-        <div style={{ marginBottom: '24px', padding: '16px', background: '#3a3a3a', borderRadius: '8px' }}>
-          <h3>Comandante</h3>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            {commander.card.image_uris?.small && (
-              <img src={commander.card.image_uris.small} alt={commander.card.name} style={{ width: '80px', borderRadius: '6px' }} />
-            )}
-            <div>
-              <strong>{commander.card.name}</strong>
-              <div style={{ fontSize: '12px', color: '#aaa' }}>{commander.card.type_line}</div>
-            </div>
-          </div>
-        </div>
+        <Card className="mb-4 deck-card">
+          <Card.Body>
+            <Card.Title>Comandante</Card.Title>
+            <Row className="align-items-center g-3">
+              <Col xs="auto">
+                {commander.card.image_uris?.small && (
+                  <img
+                    src={commander.card.image_uris.small}
+                    alt={commander.card.name}
+                    className="commander-image"
+                  />
+                )}
+              </Col>
+              <Col>
+                <h5 className="mb-1">{commander.card.name}</h5>
+                <div className="text-muted small">{commander.card.type_line}</div>
+              </Col>
+            </Row>
+          </Card.Body>
+        </Card>
       )}
 
-      {/* Maindeck */}
-      <h3>Maindeck ({main.reduce((s, c) => s + c.quantity, 0)})</h3>
-      {main.length > 0 ? (
-        main.map((entry) => (
-          <div key={entry.card.id} style={{ margin: '8px 0', padding: '8px', background: '#1e1e1e', borderRadius: '6px' }}>
-            {entry.quantity}× {entry.card.name}
-          </div>
-        ))
-      ) : (
-        <p style={{ color: '#888' }}>Aún sin cartas en el maindeck.</p>
-      )}
+      <Card className="deck-card">
+        <Card.Body>
+          <Card.Title>Maindeck</Card.Title>
+          <Card.Subtitle className="text-muted mb-3">
+            {main.reduce((s, c) => s + c.quantity, 0)} cartas
+          </Card.Subtitle>
 
-      {/* Sideboard y Maybeboard (puedes colapsar con <details> o librería) */}
-      {/* ... similar para sideboard y maybeboard ... */}
-
+          {main.length > 0 ? (
+            <ListGroup variant="flush">
+              {main.map((entry) => (
+                <ListGroup.Item key={entry.card.id} className="deck-list-item">
+                  <span>{entry.quantity}× {entry.card.name}</span>
+                </ListGroup.Item>
+              ))}
+            </ListGroup>
+          ) : (
+            <div className="text-muted">Aún sin cartas en el maindeck.</div>
+          )}
+        </Card.Body>
+      </Card>
     </div>
   );
 };
