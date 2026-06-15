@@ -1,15 +1,15 @@
-package com.mtg.deckbuilder.search;
+package com.mtg.deckbuilder.game;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+import org.springframework.cloud.openfeign.EnableFeignClients;
 
-@SpringBootApplication(scanBasePackages = "com.mtg.deckbuilder")
+@SpringBootApplication
 @EnableDiscoveryClient
-public class SearchServiceApplication {
-
+@EnableFeignClients
+public class GameServiceApplication {
     public static void main(String[] args) {
-        SpringApplication.run(SearchServiceApplication.class, args);
+        SpringApplication.run(GameServiceApplication.class, args);
     }
-
 }

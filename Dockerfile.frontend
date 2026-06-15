@@ -1,5 +1,5 @@
 # Build stage
-FROM node:18-alpine as builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -13,6 +13,9 @@ COPY index.html ./
 # Install dependencies
 RUN npm ci
 
+ARG VITE_API_BASE=http://localhost:8080
+ENV VITE_API_BASE=$VITE_API_BASE
+
 # Copy source
 COPY src ./src
 COPY public ./public
@@ -21,7 +24,7 @@ COPY public ./public
 RUN npm run build
 
 # Runtime stage
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
@@ -32,7 +35,5 @@ RUN npm install -g serve
 COPY --from=builder /app/dist ./dist
 
 EXPOSE 5173
-
-ENV VITE_API_URL=http://localhost:8080
 
 CMD ["serve", "-s", "dist", "-l", "5173"]

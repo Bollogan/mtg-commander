@@ -37,7 +37,7 @@ interface DeckState {
   //addTag: (cardName: string, tag: string) => void;
 }
 
-export const useDeckStore = create<DeckState>((set, get) => ({
+export const useDeckStore = create<DeckState>((set) => ({
   decks: [],
   currentDeckId: null,
 

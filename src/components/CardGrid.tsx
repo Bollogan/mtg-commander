@@ -22,8 +22,7 @@ export const CardGrid = ({ cards, loading = false, emptyMessage }: CardGridProps
     if (count === undefined || count === null || count <= 0) {
       return null;
     }
-    const formatted = new Intl.NumberFormat().format(count);
-    return t('search.decksCount', { count: formatted });
+    return t('search.decksCount', { count });
   };
 
   if (loading) {
