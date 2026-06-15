@@ -1,15 +1,311 @@
-version: "3.9"
+# MTG Platform — docker-compose.yml
+# Fase 1: Infrastructure + Eureka + Gateway + Auth
+# Subsequent phases add services as implemented.
+
 services:
+
+  # ─── Infrastructure ────────────────────────────────────────────────────────
+
   postgres:
     image: postgres:16-alpine
-    container_name: mtg-deck-builder-postgres
+    container_name: mtg-postgres
     environment:
       POSTGRES_DB: mtg_deck_builder
-      POSTGRES_USER: mtg
-      POSTGRES_PASSWORD: mtg
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     ports:
       - "5432:5432"
     volumes:
-      - mtg_deck_builder_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - mtg-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d mtg_deck_builder"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  mongodb:
+    image: mongo:7-jammy
+    container_name: mtg-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mongo
+      MONGO_INITDB_ROOT_PASSWORD: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - mtg-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  redis:
+    image: redis:7-alpine
+    container_name: mtg-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - mtg-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Service Discovery ─────────────────────────────────────────────────────
+
+  eureka-server:
+    build:
+      context: .
+      dockerfile: eureka-server/Dockerfile
+    container_name: mtg-eureka
+    ports:
+      - "8761:8761"
+    networks:
+      - mtg-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8761/actuator/health | grep -q UP || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ─── API Gateway ───────────────────────────────────────────────────────────
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    container_name: mtg-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      JWT_SECRET: ${JWT_SECRET:-SGVsbG8gV29ybGQgVGhpcyBpcyBhIFNlY3JldCBLZXkgZm9yIEpXVCBFbmNvZGluZw==}
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - mtg-net
+
+  # ─── Auth Service ──────────────────────────────────────────────────────────
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: auth-service/Dockerfile
+    container_name: mtg-auth
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/mtg_deck_builder
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      JWT_SECRET: ${JWT_SECRET:-SGVsbG8gV29ybGQgVGhpcyBpcyBhIFNlY3JldCBLZXkgZm9yIEpXVCBFbmNvZGluZw==}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - mtg-net
+
+  # ─── User Service (added in Fase 2) ───────────────────────────────────────
+
+  user-service:
+    build:
+      context: .
+      dockerfile: user-service/Dockerfile
+    container_name: mtg-user
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/mtg_deck_builder
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_REDIS_HOST: redis
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - mtg-net
+    profiles:
+      - fase2
+
+  # ─── Forum Service (added in Fase 2) ──────────────────────────────────────
+
+  forum-service:
+    build:
+      context: .
+      dockerfile: forum-service/Dockerfile
+    container_name: mtg-forum
+    ports:
+      - "8083:8083"
+    environment:
+      SPRING_DATA_MONGODB_URI: mongodb://mongo:mongo@mongodb:27017/mtg_forum?authSource=admin
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_REDIS_HOST: redis
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - mtg-net
+    profiles:
+      - fase2
+
+  # ─── Deck Service (added in Fase 3) ───────────────────────────────────────
+
+  deck-service:
+    build:
+      context: .
+      dockerfile: deck-service/Dockerfile
+    container_name: mtg-deck
+    ports:
+      - "8084:8084"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/mtg_deck_builder
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      JWT_SECRET: ${JWT_SECRET:-SGVsbG8gV29ybGQgVGhpcyBpcyBhIFNlY3JldCBLZXkgZm9yIEpXVCBFbmNvZGluZw==}
+      SPRING_REDIS_HOST: redis
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - mtg-net
+    profiles:
+      - fase3
+
+  # ─── Game Service (added in Fase 4) ───────────────────────────────────────
+
+  game-service:
+    build:
+      context: .
+      dockerfile: game-service/Dockerfile
+    container_name: mtg-game
+    ports:
+      - "8085:8085"
+    environment:
+      SPRING_REDIS_HOST: redis
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    depends_on:
+      redis:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - mtg-net
+    profiles:
+      - fase4
+
+  # ─── AI Service (added in Fase 4) ─────────────────────────────────────────
+
+  ai-service:
+    build:
+      context: .
+      dockerfile: ai-service/Dockerfile
+    container_name: mtg-ai
+    ports:
+      - "8086:8086"
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - mtg-net
+    profiles:
+      - fase4
+
+  # ─── Notification Service (added in Fase 2) ───────────────────────────────
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: notification-service/Dockerfile
+    container_name: mtg-notification
+    ports:
+      - "8087:8087"
+    environment:
+      SPRING_REDIS_HOST: redis
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    depends_on:
+      redis:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - mtg-net
+    profiles:
+      - fase2
+
+  # ─── Search Service (legacy — to be merged into deck-service in Fase 3) ───
+
+  search-service:
+    build:
+      context: .
+      dockerfile: search-service/Dockerfile
+    container_name: mtg-search
+    ports:
+      - "8088:8082"
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - mtg-net
+    profiles:
+      - legacy
+
+  # ─── Frontend ──────────────────────────────────────────────────────────────
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: Dockerfile.frontend
+      args:
+        VITE_API_BASE: http://localhost:8080
+    container_name: mtg-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - api-gateway
+    networks:
+      - mtg-net
+    profiles:
+      - fase2
+
+# ─── Volumes & Networks ────────────────────────────────────────────────────
+
 volumes:
-  mtg_deck_builder_data:
+  postgres_data:
+  mongodb_data:
+  redis_data:
+
+networks:
+  mtg-net:
+    driver: bridge
