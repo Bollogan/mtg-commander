@@ -3,6 +3,7 @@ import { TopNav } from './components/TopNav';
 import { HomePage } from './pages/HomePage';
 import { DecksPage } from './pages/DecksPage';
 import { DeckBuilderPage } from './pages/DeckBuilderPage';
+import { GameSimulatorPage } from './pages/GameSimulatorPage';
 import { CardDetailPage } from './pages/CardDetailPage';
 import { ProfilePage } from './components/social/ProfilePage';
 import { ForumsPage } from './components/social/ForumsPage';
@@ -24,6 +25,8 @@ function App() {
           <Route path="/decks" element={<DecksPage />} />
           <Route path="/decks/build" element={<DeckBuilderPage />} />
           <Route path="/decks/build/:id" element={<DeckBuilderPage />} />
+          <Route path="/play" element={<GameSimulatorPage />} />
+          <Route path="/play/:roomId" element={<GameSimulatorPage />} />
           <Route path="/card/:id" element={<CardDetailPage />} />
           <Route path="/login" element={<AuthPage />} />
           <Route path="/users/:id" element={<ProfilePage />} />

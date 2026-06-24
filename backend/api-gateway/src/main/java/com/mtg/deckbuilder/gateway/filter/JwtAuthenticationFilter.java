@@ -30,7 +30,10 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         "/api/auth/register",
         "/api/auth/login",
         "/api/auth/refresh",
-        "/actuator"
+        "/actuator",
+        // STOMP WebSocket handshake: auth is handled at room-join (REST) time; the
+        // upgrade request cannot carry the bearer header reliably across browsers.
+        "/ws/game"
     );
 
     private final SecretKey signingKey;
