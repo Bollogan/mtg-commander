@@ -181,14 +181,11 @@ services:
     ports:
       - "8084:8084"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/mtg_deck_builder
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
-      JWT_SECRET: ${JWT_SECRET:-SGVsbG8gV29ybGQgVGhpcyBpcyBhIFNlY3JldCBLZXkgZm9yIEpXVCBFbmNvZGluZw==}
+      SPRING_DATA_MONGODB_URI: mongodb://mongo:mongo@mongodb:27017/mtg_deck?authSource=admin
       SPRING_REDIS_HOST: redis
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
     depends_on:
-      postgres:
+      mongodb:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -262,7 +259,7 @@ services:
     profiles:
       - fase2
 
-  # ─── Search Service (legacy — to be merged into deck-service in Fase 3) ───
+  # ─── Search Service (legacy — superseded by deck-service Scryfall proxy in Fase 3, kept for back-compat) ───
 
   search-service:
     build:

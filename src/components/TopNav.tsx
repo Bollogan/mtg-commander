@@ -37,6 +37,11 @@ export const TopNav = () => {
             <Nav.Link as={NavLink} to="/decks">
               {t('nav.decks')}
             </Nav.Link>
+            {isAuthenticated && (
+              <Nav.Link as={NavLink} to="/decks/build">
+                Builder
+              </Nav.Link>
+            )}
             <Nav.Link as={NavLink} to="/forums">
               Forums
             </Nav.Link>

@@ -3,6 +3,7 @@ import authReducer from '../features/auth/authSlice';
 import profileReducer from '../features/profile/profileSlice';
 import forumReducer from '../features/forum/forumSlice';
 import notificationsReducer from '../features/notifications/notificationsSlice';
+import deckReducer from '../features/deck/deckSlice';
 
 export const store = configureStore({
   reducer: {
@@ -10,6 +11,7 @@ export const store = configureStore({
     profile: profileReducer,
     forum: forumReducer,
     notifications: notificationsReducer,
+    deck: deckReducer,
   },
 });
 

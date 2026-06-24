@@ -1,68 +1,49 @@
-package com.mtg.deckbuilder.deck;
+package com.mtg.deckbuilder.deck.domain;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
-import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-import org.hibernate.annotations.UuidGenerator;
+/**
+ * Deck aggregate persisted in MongoDB. Cards are embedded (per plan:
+ * {@code cards: [{scryfallId, qty}]}) and {@code stats} are recomputed on save.
+ */
+@Document(collection = "decks")
+public class Deck {
 
-@Entity
-@Table(name = "decks")
-public class DeckEntity {
   @Id
-  @GeneratedValue
-  @UuidGenerator
-  private UUID id;
+  private String id;
 
-  @Column(nullable = false)
+  @Indexed
   private UUID ownerId;
 
-  @Column(nullable = false)
   private String ownerName;
-
-  @Column(nullable = false)
   private String name;
-
-  @Column(nullable = false)
   private String format;
-
-  @Enumerated(EnumType.STRING)
-  @Column(nullable = false)
   private DeckVisibility visibility = DeckVisibility.PRIVATE;
-
-  @Column(length = 2000)
   private String description;
-
   private String commanderName;
 
-  @Column(nullable = false)
-  private Instant createdAt;
+  private List<DeckCard> cards = new ArrayList<>();
+  private DeckStats stats = new DeckStats();
 
-  @Column(nullable = false)
+  private Instant createdAt;
   private Instant updatedAt;
 
-  @PrePersist
-  void onCreate() {
-    Instant now = Instant.now();
-    createdAt = now;
-    updatedAt = now;
+  public boolean isPublic() {
+    return visibility == DeckVisibility.PUBLIC;
   }
 
-  @PreUpdate
-  void onUpdate() {
-    updatedAt = Instant.now();
-  }
-
-  public UUID getId() {
+  public String getId() {
     return id;
+  }
+
+  public void setId(String id) {
+    this.id = id;
   }
 
   public UUID getOwnerId() {
@@ -121,11 +102,35 @@ public class DeckEntity {
     this.commanderName = commanderName;
   }
 
+  public List<DeckCard> getCards() {
+    return cards;
+  }
+
+  public void setCards(List<DeckCard> cards) {
+    this.cards = cards == null ? new ArrayList<>() : cards;
+  }
+
+  public DeckStats getStats() {
+    return stats;
+  }
+
+  public void setStats(DeckStats stats) {
+    this.stats = stats;
+  }
+
   public Instant getCreatedAt() {
     return createdAt;
   }
 
+  public void setCreatedAt(Instant createdAt) {
+    this.createdAt = createdAt;
+  }
+
   public Instant getUpdatedAt() {
     return updatedAt;
+  }
+
+  public void setUpdatedAt(Instant updatedAt) {
+    this.updatedAt = updatedAt;
   }
 }

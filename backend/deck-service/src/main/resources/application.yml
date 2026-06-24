@@ -4,16 +4,20 @@ server:
 spring:
   application:
     name: deck-service
-  datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/mtg_deck_builder}
-    username: ${SPRING_DATASOURCE_USERNAME:postgres}
-    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
-  jpa:
-    hibernate:
-      ddl-auto: update
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+  data:
+    mongodb:
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/mtg_deck}
+      auto-index-creation: true
+    redis:
+      host: ${SPRING_REDIS_HOST:localhost}
+      port: ${SPRING_REDIS_PORT:6379}
+      password: ${SPRING_REDIS_PASSWORD:}
+
+# Scryfall integration + Redis cache (TTL 24h per plan, risk mitigation for 10 req/s limit)
+scryfall:
+  base-url: ${SCRYFALL_BASE_URL:https://api.scryfall.com}
+  user-agent: mtg-deck-builder/1.0 (+https://github.com)
+  cache-ttl-hours: 24
 
 eureka:
   client:
@@ -24,11 +28,6 @@ eureka:
     preferIpAddress: true
     instance-id: ${spring.application.name}:${server.port}
 
-security:
-  jwt:
-    secret: ${JWT_SECRET:SGVsbG8gV29ybGQgVGhpcyBpcyBhIFNlY3JldCBLZXkgZm9yIEpXVCBFbmNvZGluZw==}
-    expiration-ms: 86400000
-
 management:
   endpoints:
     web:
@@ -37,3 +36,7 @@ management:
   endpoint:
     health:
       show-details: always
+
+logging:
+  level:
+    com.mtg.deckbuilder.deck.scryfall: ${SCRYFALL_LOG_LEVEL:INFO}

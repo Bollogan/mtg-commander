@@ -1,0 +1,23 @@
+package com.mtg.deckbuilder.deck.config;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpHeaders;
+import org.springframework.web.reactive.function.client.WebClient;
+
+@Configuration
+public class ScryfallConfig {
+
+  @Bean
+  WebClient scryfallWebClient(
+      WebClient.Builder builder,
+      @Value("${scryfall.base-url}") String baseUrl,
+      @Value("${scryfall.user-agent}") String userAgent) {
+    return builder
+        .baseUrl(baseUrl)
+        .defaultHeader(HttpHeaders.USER_AGENT, userAgent)
+        .defaultHeader(HttpHeaders.ACCEPT, "application/json")
+        .build();
+  }
+}

@@ -1,4 +1,4 @@
-package com.mtg.deckbuilder.deck;
+package com.mtg.deckbuilder.deck.domain;
 
 public enum DeckVisibility {
   PRIVATE,
