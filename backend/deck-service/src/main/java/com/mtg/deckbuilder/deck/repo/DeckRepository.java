@@ -14,4 +14,6 @@ public interface DeckRepository extends MongoRepository<Deck, String> {
 
   List<Deck> findByVisibilityAndNameContainingIgnoreCaseOrderByUpdatedAtDesc(
       DeckVisibility visibility, String name);
+
+  long deleteByOwnerId(UUID ownerId);
 }

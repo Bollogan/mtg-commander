@@ -43,6 +43,15 @@ public class RecentNotificationStore {
         }
     }
 
+    /** Deletes a user's recent-notification history (RGPD erasure). */
+    public void clear(UUID userId) {
+        try {
+            redis.delete(key(userId));
+        } catch (Exception e) {
+            log.warn("Failed to clear notifications for {}: {}", userId, e.getMessage());
+        }
+    }
+
     public List<NotificationMessage> recent(UUID userId, int limit) {
         try {
             List<String> raw = redis.opsForList().range(key(userId), 0, Math.min(limit, MAX_PER_USER) - 1);

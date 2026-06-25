@@ -90,8 +90,11 @@ services:
     environment:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
       JWT_SECRET: ${JWT_SECRET:-SGVsbG8gV29ybGQgVGhpcyBpcyBhIFNlY3JldCBLZXkgZm9yIEpXVCBFbmNvZGluZw==}
+      SPRING_REDIS_HOST: redis
     depends_on:
       eureka-server:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - mtg-net

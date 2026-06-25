@@ -50,6 +50,9 @@ export const TopNav = () => {
             <Nav.Link as={NavLink} to="/forums">
               Forums
             </Nav.Link>
+            <Nav.Link as={NavLink} to="/events">
+              Events
+            </Nav.Link>
           </Nav>
           <Nav className="align-items-lg-center">
             <NavDropdown title={t('nav.language')} align="end">
@@ -64,6 +67,9 @@ export const TopNav = () => {
                     My profile
                   </NavDropdown.Item>
                 )}
+                <NavDropdown.Item as={NavLink} to="/account">
+                  Account &amp; privacy
+                </NavDropdown.Item>
                 <NavDropdown.Item onClick={onLogout}>Logout</NavDropdown.Item>
               </NavDropdown>
             ) : (

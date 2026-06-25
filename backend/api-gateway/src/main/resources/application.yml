@@ -4,8 +4,24 @@ server:
 spring:
   application:
     name: api-gateway
+  data:
+    redis:
+      host: ${SPRING_REDIS_HOST:localhost}
+      port: ${SPRING_REDIS_PORT:6379}
+      password: ${SPRING_REDIS_PASSWORD:}
   cloud:
     gateway:
+      # Applied to every route: per-IP rate limiting (Redis token bucket) + security headers.
+      default-filters:
+        - name: RequestRateLimiter
+          args:
+            key-resolver: "#{@ipKeyResolver}"
+            redis-rate-limiter.replenishRate: 20
+            redis-rate-limiter.burstCapacity: 40
+            redis-rate-limiter.requestedTokens: 1
+        - AddResponseHeader=X-Frame-Options, DENY
+        - AddResponseHeader=X-Content-Type-Options, nosniff
+        - AddResponseHeader=Referrer-Policy, no-referrer
       globalcors:
         add-to-simple-url-handler-mapping: true
         corsConfigurations:

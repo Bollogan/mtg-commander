@@ -19,13 +19,21 @@ public class RedisListenerConfig {
     }
 
     @Bean
+    public ChannelTopic userEventsTopic(@Value("${user-events.channel:user-events}") String channel) {
+        return new ChannelTopic(channel);
+    }
+
+    @Bean
     public RedisMessageListenerContainer redisMessageListenerContainer(
             RedisConnectionFactory connectionFactory,
             NotificationSubscriber subscriber,
-            ChannelTopic notificationsTopic) {
+            UserDeletedListener userDeletedListener,
+            ChannelTopic notificationsTopic,
+            ChannelTopic userEventsTopic) {
         RedisMessageListenerContainer container = new RedisMessageListenerContainer();
         container.setConnectionFactory(connectionFactory);
         container.addMessageListener(subscriber, notificationsTopic);
+        container.addMessageListener(userDeletedListener, userEventsTopic);
         return container;
     }
 }

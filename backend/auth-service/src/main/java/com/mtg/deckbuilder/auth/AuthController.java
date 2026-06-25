@@ -1,12 +1,16 @@
 package com.mtg.deckbuilder.auth;
 
 import com.mtg.deckbuilder.user.UserEntity;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -19,6 +23,9 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
+
+    /** Dedicated audit logger for security events (failed logins, etc.). */
+    private static final Logger audit = LoggerFactory.getLogger("AUDIT");
 
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
@@ -61,16 +68,33 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
-        authenticationManager.authenticate(
-            new UsernamePasswordAuthenticationToken(request.email(), request.password()));
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request,
+                                              HttpServletRequest httpRequest) {
+        try {
+            authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.email(), request.password()));
+        } catch (AuthenticationException e) {
+            audit.warn("LOGIN_FAILED email={} ip={} reason={}",
+                request.email(), clientIp(httpRequest), e.getClass().getSimpleName());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
 
         UserEntity user = userRepository.findByEmailIgnoreCase(request.email()).orElseThrow();
         UserPrincipal principal = new UserPrincipal(user);
         String token = jwtService.generateToken(principal);
         String refreshToken = createRefreshToken(user.getId());
 
+        audit.info("LOGIN_OK userId={} ip={}", user.getId(), clientIp(httpRequest));
         return ResponseEntity.ok(AuthResponse.from(principal, token, refreshToken, user.getDisplayName()));
+    }
+
+    /** Real client IP behind the gateway (X-Forwarded-For), falling back to the socket. */
+    private static String clientIp(HttpServletRequest request) {
+        String forwarded = request.getHeader("X-Forwarded-For");
+        if (forwarded != null && !forwarded.isBlank()) {
+            return forwarded.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 
     @PostMapping("/refresh")

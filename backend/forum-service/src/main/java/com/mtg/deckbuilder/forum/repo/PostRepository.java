@@ -15,4 +15,6 @@ public interface PostRepository extends MongoRepository<Post, String> {
         String threadId, Instant cursor, Pageable pageable);
 
     List<Post> findByAuthorIdInOrderByCreatedAtDesc(List<UUID> authorIds, Pageable pageable);
+
+    long deleteByAuthorId(UUID authorId);
 }
