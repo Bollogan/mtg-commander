@@ -81,7 +81,8 @@ export const HomePage = () => {
 
   return (
     <Container className="page-container">
-      <div className="page-header">
+      <div className="app-hero">
+        <span className="eyebrow">✦ Magic: The Gathering</span>
         <h1>{t('app.title')}</h1>
         <p>{t('app.subtitle')}</p>
       </div>

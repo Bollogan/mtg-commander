@@ -1,15 +1,151 @@
+/* ============================================================================
+   Design tokens — single source of truth for the visual language.
+   Modern, clean dark theme aligned with contemporary deck-building apps.
+   ========================================================================== */
+:root {
+  /* Surfaces (low → high elevation) */
+  --bg-base: #0c0d15;
+  --bg-elev-1: #14162a;
+  --bg-elev-2: #1b1e36;
+  --bg-elev-3: #242848;
+
+  /* Hairlines */
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+
+  /* Text */
+  --text: #e8eaf4;
+  --text-muted: #9aa1bd;
+  --text-faint: #6f7596;
+
+  /* Brand / accents */
+  --accent: #7c83ff;
+  --accent-rgb: 124, 131, 255;
+  --accent-strong: #6b72f5;
+  --accent-2: #46d6e6;
+  --accent-grad: linear-gradient(135deg, #7c83ff 0%, #46d6e6 100%);
+  --accent-glow: 0 0 0 1px rgba(var(--accent-rgb), 0.5), 0 8px 30px rgba(var(--accent-rgb), 0.28);
+
+  /* State colors */
+  --success: #34d399;
+  --warning: #f5c451;
+  --danger: #f0676b;
+  --info: #46d6e6;
+
+  /* Radii */
+  --radius-sm: 0.5rem;
+  --radius: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.375rem;
+  --radius-pill: 999px;
+
+  /* Shadows */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 10px 28px rgba(0, 0, 0, 0.4);
+  --shadow-3: 0 24px 60px rgba(0, 0, 0, 0.55);
+
+  /* Motion */
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur: 0.18s;
+
+  /* Typography */
+  --font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-display: 'Sora', 'Inter', system-ui, sans-serif;
+
+  color-scheme: dark;
+}
+
+/* ---- Retune Bootstrap 5.3's dark theme to our tokens (app-wide) -------------- */
+[data-bs-theme='dark'] {
+  --bs-body-bg: var(--bg-base);
+  --bs-body-color: var(--text);
+  --bs-emphasis-color: #ffffff;
+  --bs-secondary-color: var(--text-muted);
+  --bs-tertiary-color: var(--text-faint);
+  --bs-secondary-bg: var(--bg-elev-2);
+  --bs-tertiary-bg: var(--bg-elev-1);
+  --bs-border-color: var(--border);
+  --bs-border-color-translucent: var(--border);
+
+  --bs-primary: var(--accent);
+  --bs-primary-rgb: var(--accent-rgb);
+  --bs-link-color: #aab0ff;
+  --bs-link-color-rgb: 170, 176, 255;
+  --bs-link-hover-color: #c6caff;
+
+  --bs-border-radius: var(--radius);
+  --bs-border-radius-sm: var(--radius-sm);
+  --bs-border-radius-lg: var(--radius-lg);
+  --bs-border-radius-xl: var(--radius-xl);
+
+  --bs-body-font-family: var(--font-sans);
+  --bs-font-sans-serif: var(--font-sans);
+}
+
 * {
   box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  background-color: #1c1b2a;
-  color: #e8e9f3;
-  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background-color: var(--bg-base);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'ss01';
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 #root {
   min-height: 100vh;
+}
+
+h1, h2, h3, .h1, .h2, .h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+/* Accessible focus ring across the whole app */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+::selection {
+  background: rgba(var(--accent-rgb), 0.3);
+  color: #fff;
+}
+
+/* Refined scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--bg-elev-3) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--bg-elev-3);
+  border-radius: var(--radius-pill);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #2e335c;
+  background-clip: content-box;
+}
+
+/* Utility: gradient text for brand/hero accents */
+.text-gradient {
+  background: var(--accent-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }

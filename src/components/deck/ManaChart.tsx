@@ -31,7 +31,7 @@ export const ManaChart = ({ cards }: { cards: DeckCard[] }) => {
         <XAxis dataKey="bucket" fontSize={12} />
         <YAxis allowDecimals={false} fontSize={12} />
         <Tooltip />
-        <Bar dataKey="count" fill="#6f42c1" radius={[4, 4, 0, 0]} name="Cards" />
+        <Bar dataKey="count" fill="#7c83ff" radius={[4, 4, 0, 0]} name="Cards" />
       </BarChart>
     </ResponsiveContainer>
   );
