@@ -19,6 +19,19 @@ const PRIMARY_TYPES = ['Creature', 'Planeswalker', 'Instant', 'Sorcery', 'Artifa
 const GROUP_ORDER = [...PRIMARY_TYPES, 'Other'];
 const MAX_PER_GROUP = 30;
 
+const TYPE_ICON: Record<string, string> = {
+  top: '⭐',
+  Creature: '🐾',
+  Instant: '⚡',
+  Sorcery: '🌀',
+  Artifact: '⚙️',
+  Enchantment: '✨',
+  Planeswalker: '🧙',
+  Battle: '⚔️',
+  Land: '⛰️',
+  Other: '🎴'
+};
+
 const primaryTypeOf = (typeLine?: string): string => {
   const tl = (typeLine ?? '').toLowerCase();
   if (tl.includes('land')) return 'Land';
@@ -32,6 +45,7 @@ export const CardDetailPage = () => {
   const { t } = useTranslation();
   const { id } = useParams();
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
+  const [recFilter, setRecFilter] = useState<string>('top');
 
   const { data: card, isLoading } = useQuery<CardType | null>({
     queryKey: ['card', id],
@@ -67,6 +81,16 @@ export const CardDetailPage = () => {
       .filter((type) => groups.has(type))
       .map((type) => ({ type, cards: groups.get(type) as CardType[] }));
   }, [recommander]);
+
+  // "Top picks" = the highest-scored across all types (recommander returns score-ordered).
+  const recTopCards = useMemo(() => recommander.slice(0, MAX_PER_GROUP), [recommander]);
+
+  const displayedRec = useMemo(
+    () => (recFilter === 'top'
+      ? recTopCards
+      : recommanderGroups.find((g) => g.type === recFilter)?.cards ?? []),
+    [recFilter, recTopCards, recommanderGroups]
+  );
 
   const edhrecSlug = useMemo(() => {
     const slugify = (value: string) =>
@@ -309,17 +333,38 @@ export const CardDetailPage = () => {
               {t('card.recommanderEmpty', 'Sin recomendaciones disponibles ahora mismo.')}
             </p>
           ) : (
-            <Stack gap={4}>
-              {recommanderGroups.map((group) => (
-                <div key={group.type}>
-                  <div className="d-flex align-items-baseline justify-content-between flex-wrap mb-2">
-                    <h3 className="category-title">{group.type}</h3>
-                    <span className="text-muted small">{group.cards.length}</span>
-                  </div>
-                  <PaginatedCardGrid cards={group.cards} pageSize={12} />
-                </div>
-              ))}
-            </Stack>
+            <>
+              <div className="type-filter" role="tablist" aria-label={t('card.filterByType', 'Filtrar por tipo')}>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={recFilter === 'top'}
+                  className={`type-chip${recFilter === 'top' ? ' is-active' : ''}`}
+                  onClick={() => setRecFilter('top')}
+                  title={t('card.topPicks', 'Top')}
+                >
+                  <span className="type-chip__ico" aria-hidden="true">{TYPE_ICON.top}</span>
+                  <span className="type-chip__label">{t('card.topPicks', 'Top')}</span>
+                  <span className="chip-count">{recTopCards.length}</span>
+                </button>
+                {recommanderGroups.map((group) => (
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={recFilter === group.type}
+                    key={group.type}
+                    className={`type-chip${recFilter === group.type ? ' is-active' : ''}`}
+                    onClick={() => setRecFilter(group.type)}
+                    title={group.type}
+                  >
+                    <span className="type-chip__ico" aria-hidden="true">{TYPE_ICON[group.type] ?? '•'}</span>
+                    <span className="type-chip__label">{group.type}</span>
+                    <span className="chip-count">{group.cards.length}</span>
+                  </button>
+                ))}
+              </div>
+              <PaginatedCardGrid key={recFilter} cards={displayedRec} pageSize={12} />
+            </>
           )}
         </section>
       )}

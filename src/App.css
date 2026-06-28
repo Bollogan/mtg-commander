@@ -439,6 +439,56 @@
   background: rgba(0, 0, 0, 0.18);
 }
 
+/* ---- Type icon filter (recommendations, recommander-style) ----------------- */
+.type-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  margin: 0.5rem 0 1.5rem;
+}
+.type-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg-elev-1);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: color var(--dur) var(--ease), background var(--dur) var(--ease),
+    border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease),
+    transform var(--dur) var(--ease);
+}
+.type-chip:hover {
+  color: #fff;
+  border-color: var(--border-strong);
+  background: var(--bg-elev-2);
+  transform: translateY(-1px);
+}
+.type-chip.is-active {
+  color: #0b0b16;
+  background: var(--accent);
+  border-color: transparent;
+  box-shadow: 0 6px 16px rgba(var(--accent-rgb), 0.3);
+}
+.type-chip.is-active .chip-count {
+  background: rgba(0, 0, 0, 0.18);
+}
+.type-chip__ico {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+@media (max-width: 576px) {
+  /* icon-only on phones to keep the row compact */
+  .type-chip__label {
+    display: none;
+  }
+}
+
 /* ---- Alerts ---------------------------------------------------------------- */
 .alert {
   border-radius: var(--radius);
