@@ -17,8 +17,8 @@ export const CardGrid = ({ cards, loading = false, emptyMessage }: CardGridProps
   const { t } = useTranslation();
   const navigate = useNavigate();
 
-  const formatUsd = (value?: string) => (value ? `$${value}` : '—');
-  const formatEur = (value?: string) => (value ? `€${value}` : '—');
+  const formatUsd = (value?: string) => (value ? `$${value}` : '-.-');
+  const formatEur = (value?: string) => (value ? `€${value}` : '-.-');
   const formatDeckCount = (count?: number) => {
     if (count === undefined || count === null || count <= 0) {
       return null;

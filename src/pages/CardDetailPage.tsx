@@ -15,10 +15,23 @@ import { CardGrid } from '../components/CardGrid';
 import { FlipCard } from '../components/FlipCard';
 import { ManaCost } from '../components/ManaCost';
 
+const PRIMARY_TYPES = ['Creature', 'Planeswalker', 'Instant', 'Sorcery', 'Artifact', 'Enchantment', 'Battle', 'Land'];
+
+const primaryTypeOf = (typeLine?: string): string => {
+  const tl = (typeLine ?? '').toLowerCase();
+  if (tl.includes('land')) return 'Land';
+  for (const type of PRIMARY_TYPES) {
+    if (tl.includes(type.toLowerCase())) return type;
+  }
+  return 'Other';
+};
+
 export const CardDetailPage = () => {
   const { t } = useTranslation();
   const { id } = useParams();
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
+  const [recType, setRecType] = useState<string>('all');
+  const [edhrecFilter, setEdhrecFilter] = useState<string | null>(null);
 
   const { data: card, isLoading } = useQuery<CardType | null>({
     queryKey: ['card', id],
@@ -117,6 +130,27 @@ export const CardDetailPage = () => {
       };
     });
   }, [edhrecCategories]);
+
+  // Recommander: client-side filter by primary card type (recommander has no type facet).
+  const recTypes = useMemo(() => {
+    const present = new Set(recommander.map((c) => primaryTypeOf(c.type_line)));
+    return PRIMARY_TYPES.filter((type) => present.has(type));
+  }, [recommander]);
+
+  const recommanderFiltered = useMemo(
+    () => (recType === 'all'
+      ? recommander
+      : recommander.filter((c) => primaryTypeOf(c.type_line) === recType)),
+    [recommander, recType]
+  );
+
+  // EDHREC: filter the categorised sections by category (recommander has no categories).
+  const edhrecToShow = useMemo(
+    () => (edhrecFilter
+      ? categoriesWithIds.filter((c) => c.anchorId === edhrecFilter)
+      : categoriesWithIds),
+    [categoriesWithIds, edhrecFilter]
+  );
 
   const synergyCards = useMemo(() => {
     const match = categoriesWithIds.find(category => {
@@ -263,15 +297,13 @@ export const CardDetailPage = () => {
                     <div>{card.released_at}</div>
                   </div>
                 )}
-                {(card.prices?.usd || card.prices?.eur) && (
-                  <div>
-                    <div className="text-muted small">{t('card.price')}</div>
-                    <div className="d-flex flex-column">
-                      <span>TCGplayer: {card.prices?.usd ? `$${card.prices.usd}` : '—'}</span>
-                      <span>Cardmarket: {card.prices?.eur ? `€${card.prices.eur}` : '—'}</span>
-                    </div>
+                <div>
+                  <div className="text-muted small">{t('card.price')}</div>
+                  <div className="d-flex flex-column">
+                    <span>TCGplayer: {card.prices?.usd ? `$${card.prices.usd}` : '-.-'}</span>
+                    <span>Cardmarket: {card.prices?.eur ? `€${card.prices.eur}` : '-.-'}</span>
                   </div>
-                )}
+                </div>
               </Stack>
 
               {card.related_uris?.edhrec && (
@@ -305,11 +337,37 @@ export const CardDetailPage = () => {
               <Spinner animation="border" />
             </div>
           ) : (
-            <CardGrid
-              cards={recommander}
-              loading={false}
-              emptyMessage={t('card.recommanderEmpty', 'Sin recomendaciones disponibles ahora mismo.')}
-            />
+            <>
+              {recommander.length > 0 && (
+                <div className="chip-bar" role="tablist" aria-label={t('card.filterByType', 'Filtrar por tipo')}>
+                  <button
+                    type="button"
+                    className={`chip${recType === 'all' ? ' is-active' : ''}`}
+                    onClick={() => setRecType('all')}
+                  >
+                    {t('card.allTypes', 'Todos')} <span className="chip-count">{recommander.length}</span>
+                  </button>
+                  {recTypes.map((type) => {
+                    const count = recommander.filter((c) => primaryTypeOf(c.type_line) === type).length;
+                    return (
+                      <button
+                        type="button"
+                        key={type}
+                        className={`chip${recType === type ? ' is-active' : ''}`}
+                        onClick={() => setRecType(type)}
+                      >
+                        {type} <span className="chip-count">{count}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              <CardGrid
+                cards={recommanderFiltered}
+                loading={false}
+                emptyMessage={t('card.recommanderEmpty', 'Sin recomendaciones disponibles ahora mismo.')}
+              />
+            </>
           )}
         </section>
       )}
@@ -337,11 +395,33 @@ export const CardDetailPage = () => {
           {!edhrecLoading && edhrecCategories.length === 0 && (
             <p className="text-muted">{t('card.edhrecEmpty')}</p>
           )}
+          {categoriesWithIds.length > 0 && (
+            <div className="chip-bar" aria-label={t('card.filterByCategory', 'Filtrar por categoría')}>
+              <button
+                type="button"
+                className={`chip${!edhrecFilter ? ' is-active' : ''}`}
+                onClick={() => setEdhrecFilter(null)}
+              >
+                {t('card.allCategories', 'Todas')}
+              </button>
+              {categoriesWithIds.map((category) => (
+                <button
+                  type="button"
+                  key={`chip-${category.anchorId}`}
+                  className={`chip${edhrecFilter === category.anchorId ? ' is-active' : ''}`}
+                  onClick={() => setEdhrecFilter(category.anchorId)}
+                >
+                  <span aria-hidden="true">{category.icon}</span> {category.header}
+                  <span className="chip-count">{category.cards.length}</span>
+                </button>
+              ))}
+            </div>
+          )}
           <Row className="g-4 edhrec-layout">
             <Col md={3} className="edhrec-nav">
               <div className="edhrec-nav-title">{t('card.edhrecCategories')}</div>
               <Stack gap={2}>
-                {categoriesWithIds.map(category => (
+                {edhrecToShow.map(category => (
                   <a
                     key={`nav-${category.tag}-${category.header}`}
                     className={`edhrec-nav-link${activeCategoryId === category.anchorId ? ' active' : ''}`}
@@ -358,7 +438,7 @@ export const CardDetailPage = () => {
             </Col>
             <Col md={9}>
               <Stack gap={4}>
-                {categoriesWithIds.map(category => (
+                {edhrecToShow.map(category => (
                   <div
                     key={`${category.tag}-${category.header}`}
                     id={category.anchorId}
