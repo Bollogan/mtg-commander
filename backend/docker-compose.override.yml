@@ -1,0 +1,30 @@
+# docker-compose.override.yml — local development overrides
+# This file is merged automatically with docker-compose.yml when running
+# `docker-compose up` locally. Do NOT commit secrets here.
+
+version: "3.9"
+
+services:
+  postgres:
+    ports:
+      - "5432:5432"
+
+  mongodb:
+    ports:
+      - "27017:27017"
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  eureka-server:
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+
+  api-gateway:
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+
+  auth-service:
+    environment:
+      SPRING_PROFILES_ACTIVE: dev

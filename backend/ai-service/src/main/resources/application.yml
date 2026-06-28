@@ -1,0 +1,32 @@
+server:
+  port: 8086
+
+spring:
+  application:
+    name: ai-service
+
+ai:
+  external:
+    # Disabled by default: no public community model is wired yet, so requests use the
+    # local co-occurrence fallback. Enable + point at a real endpoint to proxy it.
+    enabled: ${AI_EXTERNAL_ENABLED:false}
+    url: ${AI_EXTERNAL_URL:http://localhost:9000}
+    timeout-ms: ${AI_EXTERNAL_TIMEOUT_MS:3000}
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+    registry-fetch-interval-seconds: 5
+  instance:
+    preferIpAddress: true
+    instance-id: ${spring.application.name}:${server.port}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always

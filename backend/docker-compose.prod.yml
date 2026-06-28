@@ -1,0 +1,194 @@
+# Production composition (Fase 5).
+# Run: docker compose -f docker-compose.prod.yml --profile prod up -d
+#
+# Hardening vs. the dev compose:
+#   - ONLY api-gateway (:8080) and frontend (:80) publish ports to the host.
+#     Every other service is reachable only on the internal mtg-net network.
+#   - All secrets/credentials are externalized via environment variables (with
+#     dev-only fallbacks) — override them in a real deployment (e.g. .env / secrets).
+#   - Every service is gated behind the `prod` profile.
+
+x-prod: &prod-profile
+  profiles: ["prod"]
+
+services:
+  postgres:
+    <<: *prod-profile
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mtg_deck_builder}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-mtg_deck_builder}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [mtg-net]
+
+  mongodb:
+    <<: *prod-profile
+    image: mongo:7-jammy
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-mongo}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:?set MONGO_PASSWORD}
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [mtg-net]
+
+  redis:
+    <<: *prod-profile
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "60", "1"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [mtg-net]
+
+  eureka-server:
+    <<: *prod-profile
+    build: { context: ., dockerfile: eureka-server/Dockerfile }
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8761/actuator/health | grep -q UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks: [mtg-net]
+
+  # ─── The ONLY backend port exposed to the host ───────────────────────────────
+  api-gateway:
+    <<: *prod-profile
+    build: { context: ., dockerfile: api-gateway/Dockerfile }
+    ports:
+      - "8080:8080"
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
+      SPRING_REDIS_HOST: redis
+    depends_on:
+      eureka-server: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [mtg-net]
+
+  auth-service:
+    <<: *prod-profile
+    build: { context: ., dockerfile: auth-service/Dockerfile }
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-mtg_deck_builder}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
+    depends_on:
+      postgres: { condition: service_healthy }
+      eureka-server: { condition: service_healthy }
+    networks: [mtg-net]
+
+  user-service:
+    <<: *prod-profile
+    build: { context: ., dockerfile: user-service/Dockerfile }
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-mtg_deck_builder}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      SPRING_REDIS_HOST: redis
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      eureka-server: { condition: service_healthy }
+    networks: [mtg-net]
+
+  forum-service:
+    <<: *prod-profile
+    build: { context: ., dockerfile: forum-service/Dockerfile }
+    environment:
+      SPRING_DATA_MONGODB_URI: mongodb://${MONGO_USER:-mongo}:${MONGO_PASSWORD:?set MONGO_PASSWORD}@mongodb:27017/mtg_forum?authSource=admin
+      SPRING_REDIS_HOST: redis
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    depends_on:
+      mongodb: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      eureka-server: { condition: service_healthy }
+    networks: [mtg-net]
+
+  deck-service:
+    <<: *prod-profile
+    build: { context: ., dockerfile: deck-service/Dockerfile }
+    environment:
+      SPRING_DATA_MONGODB_URI: mongodb://${MONGO_USER:-mongo}:${MONGO_PASSWORD:?set MONGO_PASSWORD}@mongodb:27017/mtg_deck?authSource=admin
+      SPRING_REDIS_HOST: redis
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    depends_on:
+      mongodb: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      eureka-server: { condition: service_healthy }
+    networks: [mtg-net]
+
+  game-service:
+    <<: *prod-profile
+    build: { context: ., dockerfile: game-service/Dockerfile }
+    environment:
+      SPRING_REDIS_HOST: redis
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    depends_on:
+      redis: { condition: service_healthy }
+      eureka-server: { condition: service_healthy }
+    networks: [mtg-net]
+
+  ai-service:
+    <<: *prod-profile
+    build: { context: ., dockerfile: ai-service/Dockerfile }
+    environment:
+      AI_EXTERNAL_ENABLED: ${AI_EXTERNAL_ENABLED:-false}
+      AI_EXTERNAL_URL: ${AI_EXTERNAL_URL:-http://localhost:9000}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    depends_on:
+      eureka-server: { condition: service_healthy }
+    networks: [mtg-net]
+
+  notification-service:
+    <<: *prod-profile
+    build: { context: ., dockerfile: notification-service/Dockerfile }
+    environment:
+      SPRING_REDIS_HOST: redis
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    depends_on:
+      redis: { condition: service_healthy }
+      eureka-server: { condition: service_healthy }
+    networks: [mtg-net]
+
+  # ─── Frontend: the only other host-exposed port ──────────────────────────────
+  frontend:
+    <<: *prod-profile
+    build:
+      context: ..
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "80:80"
+    environment:
+      VITE_API_BASE: ${PUBLIC_API_BASE:-http://localhost:8080}
+    depends_on:
+      api-gateway: { condition: service_started }
+    networks: [mtg-net]
+
+volumes:
+  postgres_data:
+  mongodb_data:
+  redis_data:
+
+networks:
+  mtg-net:
+    driver: bridge

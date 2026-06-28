@@ -3,3 +3,7 @@ node_modules/
 dist/
 .env
 *.log
+
+# Maven build output
+target/
+**/target/

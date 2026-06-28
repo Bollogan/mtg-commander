@@ -18,6 +18,6 @@ WORKDIR /app
 # Copy JAR from builder
 COPY --from=builder /app/deck-service/target/deck-service-*.jar deck-service.jar
 
-EXPOSE 8083
+EXPOSE 8084
 
 ENTRYPOINT ["java", "-jar", "deck-service.jar"]

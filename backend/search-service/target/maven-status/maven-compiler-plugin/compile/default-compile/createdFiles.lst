@@ -1,9 +1,0 @@
-com\mtg\deckbuilder\search\SearchServiceApplication.class
-com\mtg\deckbuilder\service\ScryfallService.class
-com\mtg\deckbuilder\dto\EdhrecCategoryDto.class
-com\mtg\deckbuilder\dto\TopCommanderDto.class
-com\mtg\deckbuilder\dto\SearchResponseDto.class
-com\mtg\deckbuilder\dto\CardDto$ImageUris.class
-com\mtg\deckbuilder\dto\CardDto.class
-com\mtg\deckbuilder\controller\ScryfallController.class
-com\mtg\deckbuilder\dto\CardIdRequestDto.class

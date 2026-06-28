@@ -30,12 +30,17 @@ public class ScryfallService {
   private static final Logger logger = LoggerFactory.getLogger(ScryfallService.class);
   private static final int UI_PAGE_SIZE = 20;
   private static final int SCRYFALL_PAGE_SIZE = 175;
+  private static final String SCRYFALL_USER_AGENT = "mtg-deck-builder/1.0 (+https://github.com)";
   private final RestClient scryfallClient;
   private final ObjectMapper objectMapper;
   private final HttpClient httpClient;
 
   public ScryfallService(RestClient.Builder restClientBuilder, ObjectMapper objectMapper) {
-    this.scryfallClient = restClientBuilder.baseUrl("https://api.scryfall.com").build();
+    this.scryfallClient = restClientBuilder
+        .baseUrl("https://api.scryfall.com")
+        .defaultHeader("User-Agent", SCRYFALL_USER_AGENT)
+        .defaultHeader("Accept", "application/json")
+        .build();
     this.objectMapper = objectMapper;
     this.httpClient = HttpClient.newBuilder()
         .connectTimeout(Duration.ofSeconds(10))

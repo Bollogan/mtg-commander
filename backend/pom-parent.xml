@@ -7,7 +7,7 @@
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>3.3.5</version>
+    <version>3.3.6</version>
     <relativePath/>
   </parent>
 
@@ -22,8 +22,13 @@
     <module>eureka-server</module>
     <module>api-gateway</module>
     <module>auth-service</module>
-    <module>search-service</module>
+    <module>user-service</module>
+    <module>forum-service</module>
     <module>deck-service</module>
+    <module>game-service</module>
+    <module>ai-service</module>
+    <module>notification-service</module>
+    <module>search-service</module>
   </modules>
 
   <properties>
