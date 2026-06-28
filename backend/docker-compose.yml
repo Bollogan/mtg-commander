@@ -262,7 +262,7 @@ services:
     profiles:
       - fase2
 
-  # ─── Search Service (legacy — superseded by deck-service Scryfall proxy in Fase 3, kept for back-compat) ───
+  # ─── Search Service (Scryfall proxy: powers the public card catalogue / landing page) ───
 
   search-service:
     build:
@@ -278,8 +278,6 @@ services:
         condition: service_healthy
     networks:
       - mtg-net
-    profiles:
-      - legacy
 
   # ─── Frontend ──────────────────────────────────────────────────────────────
 

@@ -170,6 +170,15 @@ services:
       eureka-server: { condition: service_healthy }
     networks: [mtg-net]
 
+  search-service:
+    <<: *prod-profile
+    build: { context: ., dockerfile: search-service/Dockerfile }
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    depends_on:
+      eureka-server: { condition: service_healthy }
+    networks: [mtg-net]
+
   # ─── Frontend: the only other host-exposed port ──────────────────────────────
   frontend:
     <<: *prod-profile
