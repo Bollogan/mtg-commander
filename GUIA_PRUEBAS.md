@@ -9,6 +9,109 @@ flujos end-to-end, seguridad y rendimiento) que no se ejecuta en CI.
 
 ---
 
+## 🚀 Puesta en marcha completa (de cero a poder probar)
+
+> **Para evaluadores externos.** Sigue estos pasos en orden; al terminar tendrás toda la
+> plataforma corriendo en local y un token listo para las pruebas de las secciones siguientes.
+> No necesitas conocer el código: todo se levanta con Docker.
+
+### Paso 1 — Instalar lo necesario
+
+| Herramienta | Versión mínima | Para qué | Comprobar |
+|-------------|----------------|----------|-----------|
+| **Docker Desktop** (incluye Docker Compose v2) | 24+ | Levantar TODO el backend e infraestructura | `docker --version` y `docker compose version` |
+| **Git** | cualquiera | Obtener el proyecto | `git --version` |
+| Node.js (opcional) | 20+ | Frontend en modo desarrollo | `node --version` |
+| `jq` (opcional) | cualquiera | Extraer el token en la consola | `jq --version` |
+| k6 / Lighthouse (opcional) | cualquiera | Pruebas de rendimiento (sección 7) | `k6 version` |
+
+> En Windows usa **Git Bash** o **PowerShell**. Donde el comando cambia entre ambos, se
+> indican las dos variantes. Docker Desktop debe estar **abierto y en ejecución**.
+
+### Paso 2 — Obtener el proyecto y situarse en `backend/`
+
+```bash
+git clone <URL_DEL_REPOSITORIO> mtg-deck-builder
+cd mtg-deck-builder/backend
+```
+*(Si ya tienes la carpeta, simplemente `cd` a `mtg-deck-builder/backend`.)*
+
+### Paso 3 — Levantar TODA la plataforma con un comando
+
+La primera vez compila las imágenes (puede tardar varios minutos):
+
+```bash
+docker compose --profile fase2 --profile fase3 --profile fase4 up -d --build
+```
+
+Esto arranca **infraestructura** (PostgreSQL, MongoDB, Redis), **Eureka**, **API Gateway**
+y los **9 microservicios**. (`-d` = segundo plano; quita `-d` para ver logs en vivo.)
+
+### Paso 4 — Esperar a que todo esté listo (~1–2 min)
+
+```bash
+docker compose ps
+```
+Espera a que los contenedores con healthcheck (`mtg-postgres`, `mtg-mongodb`, `mtg-redis`,
+`mtg-eureka`) aparezcan como **healthy**. Luego abre el panel de Eureka:
+
+👉 <http://localhost:8761> → deben figurar **todos** los servicios registrados
+(`API-GATEWAY`, `AUTH-SERVICE`, `USER-SERVICE`, `FORUM-SERVICE`, `DECK-SERVICE`,
+`GAME-SERVICE`, `AI-SERVICE`, `NOTIFICATION-SERVICE`).
+
+> Si un servicio de dominio no aparece aún, espera 30 s y refresca: arrancan tras Eureka.
+
+### Paso 5 — Smoke test: registrarse, hacer login y guardar el token
+
+**Git Bash / Linux / macOS (con `jq`):**
+```bash
+BASE_URL=http://localhost:8080
+curl -s -X POST $BASE_URL/api/auth/register -H "Content-Type: application/json" \
+  -d '{"email":"eval@example.com","password":"Password123!","displayName":"Evaluador"}' > /dev/null
+
+TOKEN=$(curl -s -X POST $BASE_URL/api/auth/login -H "Content-Type: application/json" \
+  -d '{"email":"eval@example.com","password":"Password123!"}' | jq -r .accessToken)
+
+echo "Token: $TOKEN"
+```
+
+**PowerShell:**
+```powershell
+$BASE_URL = "http://localhost:8080"
+Invoke-RestMethod -Method Post "$BASE_URL/api/auth/register" -ContentType "application/json" `
+  -Body '{"email":"eval@example.com","password":"Password123!","displayName":"Evaluador"}'
+$login = Invoke-RestMethod -Method Post "$BASE_URL/api/auth/login" -ContentType "application/json" `
+  -Body '{"email":"eval@example.com","password":"Password123!"}'
+$TOKEN = $login.accessToken
+$TOKEN
+```
+✅ Si ves un token largo (`eyJ...`), el backend funciona de extremo a extremo.
+
+### Paso 6 — (Opcional) Levantar el frontend
+
+```bash
+# desde la raíz del proyecto (no desde backend/)
+cd ..
+npm install
+npm run dev      # abre http://localhost:5173
+```
+Regístrate/inicia sesión desde la web y navega: `/decks/build`, `/play`, `/forums`,
+`/events`, `/account`.
+
+### Paso 7 — Apagar al terminar
+
+```bash
+cd backend
+docker compose --profile fase2 --profile fase3 --profile fase4 down      # detiene y elimina contenedores
+# añade -v para borrar también los datos (volúmenes de Postgres/Mongo/Redis):
+docker compose --profile fase2 --profile fase3 --profile fase4 down -v
+```
+
+> A partir de aquí, las secciones 1–9 detallan **qué** comprobar en cada fase. Si solo
+> quieres una verificación rápida, los pasos 3–5 ya demuestran que la plataforma está viva.
+
+---
+
 ## 0. Requisitos previos
 
 - Docker Desktop + Docker Compose
@@ -316,11 +419,30 @@ Rutas clave: `/login`, `/decks/build` (constructor con drag&drop, ManaChart, sug
 
 ---
 
-## 9. Checklist final del plan
+## 9. Documentación OpenAPI (Springdoc)
+
+Cada microservicio publica su contrato OpenAPI y una UI Swagger en su propio puerto
+(expuestos en el compose de desarrollo). Con la plataforma levantada (sección 🚀):
+
+| Servicio | Swagger UI | OpenAPI JSON |
+|----------|-----------|--------------|
+| auth-service | <http://localhost:8081/swagger-ui.html> | <http://localhost:8081/v3/api-docs> |
+| user-service | <http://localhost:8082/swagger-ui.html> | <http://localhost:8082/v3/api-docs> |
+| forum-service | <http://localhost:8083/swagger-ui.html> | <http://localhost:8083/v3/api-docs> |
+| deck-service | <http://localhost:8084/swagger-ui.html> | <http://localhost:8084/v3/api-docs> |
+| game-service | <http://localhost:8085/swagger-ui.html> | <http://localhost:8085/v3/api-docs> |
+| ai-service | <http://localhost:8086/swagger-ui.html> | <http://localhost:8086/v3/api-docs> |
+| notification-service | <http://localhost:8087/swagger-ui.html> | <http://localhost:8087/v3/api-docs> |
+
+✅ Cada URL `/v3/api-docs` devuelve el JSON OpenAPI con los endpoints del servicio.
+
+---
+
+## 10. Checklist final del plan
 
 - [ ] Todos los servicios visibles en el dashboard de Eureka (Docker)
 - [ ] Ningún servicio expone puerto salvo a través del gateway (perfil prod)
 - [ ] RGPD: export y delete funcionales y sin huérfanos
 - [ ] Rate limiting: `429` al superar 20 req/s
-- [ ] Springdoc OpenAPI por servicio: `http://localhost:<puerto>/v3/api-docs` (si está habilitado)
+- [ ] Springdoc OpenAPI activo en cada servicio (`/v3/api-docs`) — ver §9
 - [ ] GitHub Actions CI en verde en `main`
