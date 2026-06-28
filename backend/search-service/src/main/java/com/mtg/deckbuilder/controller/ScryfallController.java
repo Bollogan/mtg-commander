@@ -5,6 +5,7 @@ import com.mtg.deckbuilder.dto.CardIdRequestDto;
 import com.mtg.deckbuilder.dto.EdhrecCategoryDto;
 import com.mtg.deckbuilder.dto.SearchResponseDto;
 import com.mtg.deckbuilder.dto.TopCommanderDto;
+import com.mtg.deckbuilder.service.RecommanderService;
 import com.mtg.deckbuilder.service.ScryfallService;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
@@ -20,9 +21,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 @RequestMapping("/api/scryfall")
 public class ScryfallController {
   private final ScryfallService scryfallService;
+  private final RecommanderService recommanderService;
 
-  public ScryfallController(ScryfallService scryfallService) {
+  public ScryfallController(ScryfallService scryfallService,
+      RecommanderService recommanderService) {
     this.scryfallService = scryfallService;
+    this.recommanderService = recommanderService;
   }
 
   @GetMapping("/search")
@@ -59,5 +63,12 @@ public class ScryfallController {
     @PostMapping("/cards/collection")
     public List<CardDto> collection(@RequestBody CardIdRequestDto request) {
       return scryfallService.getCardsByIds(request.ids());
+    }
+
+    /** Card recommendations for a commander, sourced from recommander.cards (proxied). */
+    @GetMapping("/recommander")
+    public List<CardDto> recommander(@RequestParam("commander") String commander,
+        @RequestParam(value = "limit", defaultValue = "20") int limit) {
+      return recommanderService.recommendForCommander(commander, limit);
     }
 }

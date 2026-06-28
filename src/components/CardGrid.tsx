@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { type Card } from '../types/cardType';
+import { FlipCard } from './FlipCard';
 
 type CardGridItem = Card & { deckCount?: number };
 
@@ -44,24 +45,7 @@ export const CardGrid = ({ cards, loading = false, emptyMessage }: CardGridProps
           >
             <div className="card-shell h-100">
               <div className="card-frame">
-                {(() => {
-                  const imageSrc = card.image_uris?.normal
-                    ?? (card.id ? `https://api.scryfall.com/cards/${card.id}?format=image` : '');
-
-                  if (!imageSrc) {
-                    return <div className="no-image">No image</div>;
-                  }
-
-                  return (
-                    <img
-                      src={imageSrc}
-                      alt={card.name}
-                      className="card-image"
-                      onClick={() => navigate(`/card/${card.id}`)}
-                      loading="lazy"
-                    />
-                  );
-                })()}
+                <FlipCard card={card} onImageClick={() => navigate(`/card/${card.id}`)} />
               </div>
               <div className="card-meta">
                 <div className="card-name">{card.name}</div>

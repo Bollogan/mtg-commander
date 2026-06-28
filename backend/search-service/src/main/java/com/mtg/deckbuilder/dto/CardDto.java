@@ -21,7 +21,8 @@ public record CardDto(
     Map<String, String> related_uris,
     String artist,
     String released_at,
-    Map<String, String> prices
+    Map<String, String> prices,
+    List<CardFace> card_faces
 ) {
   public record ImageUris(
       String small,
@@ -30,5 +31,16 @@ public record CardDto(
       String png,
       String art_crop,
       String border_crop
+  ) {}
+
+  /** One printed face of a double-faced / modal card (front and back). */
+  public record CardFace(
+      String name,
+      String mana_cost,
+      String type_line,
+      String oracle_text,
+      String power,
+      String toughness,
+      ImageUris image_uris
   ) {}
 }

@@ -147,6 +147,70 @@
   font-weight: 600;
   font-size: 1rem;
 }
+
+/* ---- Double-faced card flip ----------------------------------------------- */
+.flip-card {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 63 / 88;
+  perspective: 1400px;
+}
+.flip-card__inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.6s var(--ease);
+  transform-style: preserve-3d;
+}
+.flip-card.is-flipped .flip-card__inner {
+  transform: rotateY(180deg);
+}
+.flip-card__face {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.flip-card__face img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  cursor: pointer;
+}
+.flip-card__face--back {
+  transform: rotateY(180deg);
+}
+.flip-btn {
+  position: absolute;
+  right: 0.55rem;
+  bottom: 0.55rem;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-pill);
+  color: #fff;
+  background: rgba(12, 13, 21, 0.7);
+  border: 1px solid var(--border-strong);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: var(--shadow-2);
+  cursor: pointer;
+  transition: transform var(--dur) var(--ease), background var(--dur) var(--ease),
+    color var(--dur) var(--ease);
+}
+.flip-btn:hover {
+  background: rgba(var(--accent-rgb), 0.9);
+  color: #0b0b16;
+  transform: rotate(-30deg);
+}
+.flip-btn:active {
+  transform: rotate(-180deg);
+}
 .card-type {
   color: var(--text-muted);
   font-size: 0.85rem;

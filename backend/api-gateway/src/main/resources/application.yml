@@ -152,3 +152,18 @@ management:
   endpoint:
     health:
       show-details: always
+
+# Gateway CircuitBreaker (Resilience4j) time limit. Default is 1s, which cuts off slower
+# upstream proxies (Scryfall search, recommander.cards). Raise it so those routes don't 503.
+resilience4j:
+  timelimiter:
+    configs:
+      default:
+        timeout-duration: 12s
+        cancel-running-future: true
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: 20
+        failureRateThreshold: 60
+        waitDurationInOpenState: 10s

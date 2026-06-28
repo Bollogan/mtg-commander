@@ -4,9 +4,15 @@ import { useQuery } from '@tanstack/react-query';
 import { Button, Card, Col, Container, Row, Spinner, Stack } from 'react-bootstrap';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { fetchCardById, fetchEdhrecCommanderCategoriesClient, fetchRelatedCards } from '../services/scryfallApi';
+import {
+  fetchCardById,
+  fetchEdhrecCommanderCategoriesClient,
+  fetchRecommander,
+  fetchRelatedCards,
+} from '../services/scryfallApi';
 import { type Card as CardType } from '../types/cardType';
 import { CardGrid } from '../components/CardGrid';
+import { FlipCard } from '../components/FlipCard';
 import { ManaCost } from '../components/ManaCost';
 
 export const CardDetailPage = () => {
@@ -24,6 +30,18 @@ export const CardDetailPage = () => {
     queryKey: ['card-related', id],
     queryFn: () => fetchRelatedCards(id || ''),
     enabled: Boolean(id)
+  });
+
+  const isCommander = useMemo(() => {
+    const tl = (card?.type_line ?? '').toLowerCase();
+    return tl.includes('legendary') && (tl.includes('creature') || tl.includes('planeswalker'));
+  }, [card?.type_line]);
+
+  const { data: recommander = [], isLoading: recommanderLoading } = useQuery<CardType[]>({
+    queryKey: ['recommander', card?.name],
+    queryFn: () => fetchRecommander(card?.name || '', 20),
+    enabled: Boolean(card?.name) && isCommander,
+    staleTime: 1000 * 60 * 30
   });
 
   const edhrecSlug = useMemo(() => {
@@ -174,17 +192,7 @@ export const CardDetailPage = () => {
         <Row className="g-4">
           <Col md={5}>
             <Card className="detail-card">
-              {(() => {
-                const imageSrc = card.image_uris?.large
-                  ?? card.image_uris?.normal
-                  ?? (card.id ? `https://api.scryfall.com/cards/${card.id}?format=image&version=large` : '');
-
-                if (!imageSrc) {
-                  return <div className="no-image">No image</div>;
-                }
-
-                return <Card.Img variant="top" src={imageSrc} alt={card.name} />;
-              })()}
+              <FlipCard card={card} />
             </Card>
           </Col>
           <Col md={7}>
@@ -199,7 +207,22 @@ export const CardDetailPage = () => {
 
               <div className="detail-box">
                 <h5>{t('card.details')}</h5>
-                <p>{card.oracle_text}</p>
+                {card.card_faces?.length ? (
+                  <Stack gap={3}>
+                    {card.card_faces.map((face, i) => (
+                      <div key={`${face.name}-${i}`}>
+                        <div className="d-flex align-items-baseline justify-content-between flex-wrap">
+                          <strong>{face.name}</strong>
+                          {face.mana_cost && <ManaCost manaCost={face.mana_cost} size={16} />}
+                        </div>
+                        {face.type_line && <div className="text-muted small mb-1">{face.type_line}</div>}
+                        <p className="mb-0" style={{ whiteSpace: 'pre-line' }}>{face.oracle_text}</p>
+                      </div>
+                    ))}
+                  </Stack>
+                ) : (
+                  <p className="mb-0" style={{ whiteSpace: 'pre-line' }}>{card.oracle_text}</p>
+                )}
               </div>
 
               <div className="detail-meta">
@@ -270,6 +293,26 @@ export const CardDetailPage = () => {
         <h2 className="section-title">{t('card.related')}</h2>
         <CardGrid cards={related} loading={relatedLoading} emptyMessage={t('search.empty')} />
       </section>
+
+      {isCommander && (
+        <section className="mt-5">
+          <h2 className="section-title">{t('card.recommander', 'Recomendaciones')}</h2>
+          <p className="text-muted text-center small">
+            {t('card.recommanderSource', 'Sugerencias basadas en mazos reales · recommander.cards')}
+          </p>
+          {recommanderLoading ? (
+            <div className="text-center my-4">
+              <Spinner animation="border" />
+            </div>
+          ) : (
+            <CardGrid
+              cards={recommander}
+              loading={false}
+              emptyMessage={t('card.recommanderEmpty', 'Sin recomendaciones disponibles ahora mismo.')}
+            />
+          )}
+        </section>
+      )}
 
       <section className="mt-5">
         <h2 className="section-title">{t('card.edhrecSynergy')}</h2>

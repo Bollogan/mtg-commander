@@ -183,6 +183,22 @@ export const fetchTopCommanders = async (limit = 20): Promise<TopCommander[]> =>
   }
 };
 
+/** Card recommendations for a commander via the backend recommander.cards proxy. */
+export const fetchRecommander = async (commander: string, limit = 20): Promise<Card[]> => {
+  if (!commander) {
+    return [];
+  }
+  try {
+    const response = await axios.get<Card[]>(`${API_BASE}/api/scryfall/recommander`, {
+      params: { commander, limit },
+    });
+    return response.data || [];
+  } catch (error) {
+    console.error('Error fetching recommander recommendations:', error);
+    return [];
+  }
+};
+
 export const fetchCardById = async (id: string): Promise<Card | null> => {
   try {
     const response = await axios.get<Card>(`${API_BASE}/api/scryfall/cards/${id}`);

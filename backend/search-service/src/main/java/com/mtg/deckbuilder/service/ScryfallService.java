@@ -397,6 +397,7 @@ public class ScryfallService {
     String artist = textOr(raw, "artist", null);
     String releasedAt = textOr(raw, "released_at", null);
     Map<String, String> prices = objectToMap(raw.path("prices"));
+    List<CardDto.CardFace> cardFaces = mapCardFaces(raw);
 
     return new CardDto(
         id,
@@ -416,8 +417,92 @@ public class ScryfallService {
         relatedUris,
         artist,
         releasedAt,
-        prices
+        prices,
+        cardFaces
     );
+  }
+
+  /**
+   * Maps the printed faces of a double-faced / modal card. Returns null unless at least two
+   * faces carry their OWN image (true transform/MDFC cards) — split/adventure cards share a
+   * single image and should not show a flip control.
+   */
+  private List<CardDto.CardFace> mapCardFaces(JsonNode raw) {
+    JsonNode faces = raw.path("card_faces");
+    if (!faces.isArray() || faces.size() < 2) {
+      return null;
+    }
+    List<CardDto.CardFace> result = new ArrayList<>();
+    int withImage = 0;
+    for (JsonNode f : faces) {
+      CardDto.ImageUris img = faceImageUris(f);
+      if (img != null) {
+        withImage++;
+      }
+      result.add(new CardDto.CardFace(
+          textOr(f, "name", null),
+          textOr(f, "mana_cost", null),
+          textOr(f, "type_line", null),
+          textOr(f, "oracle_text", null),
+          textOr(f, "power", null),
+          textOr(f, "toughness", null),
+          img));
+    }
+    return withImage >= 2 ? result : null;
+  }
+
+  private CardDto.ImageUris faceImageUris(JsonNode face) {
+    JsonNode node = face.path("image_uris");
+    if (!node.isObject()) {
+      return null;
+    }
+    return new CardDto.ImageUris(
+        textOr(node, "small", null),
+        textOr(node, "normal", null),
+        textOr(node, "large", null),
+        textOr(node, "png", null),
+        textOr(node, "art_crop", null),
+        textOr(node, "border_crop", null));
+  }
+
+  /** Resolves cards by exact name via Scryfall's collection endpoint (used by recommander). */
+  public List<CardDto> getCardsByNames(List<String> names) {
+    if (names == null || names.isEmpty()) {
+      return List.of();
+    }
+    Map<String, CardDto> byName = new HashMap<>();
+    for (List<String> batch : partition(names.stream().distinct().collect(Collectors.toList()), 75)) {
+      try {
+        List<Map<String, String>> identifiers = batch.stream()
+            .map(n -> Map.of("name", n))
+            .collect(Collectors.toList());
+        JsonNode response = scryfallClient.post()
+            .uri("/cards/collection")
+            .body(Map.of("identifiers", identifiers))
+            .retrieve()
+            .body(JsonNode.class);
+        if (response == null || !response.path("data").isArray()) {
+          continue;
+        }
+        for (JsonNode raw : response.path("data")) {
+          CardDto mapped = mapToCard(raw);
+          if (mapped != null && mapped.name() != null) {
+            byName.putIfAbsent(mapped.name().toLowerCase(Locale.ROOT), mapped);
+          }
+        }
+      } catch (Exception ex) {
+        logger.warn("Failed to resolve Scryfall names batch", ex);
+      }
+    }
+    // Preserve the input order (recommendation ranking).
+    List<CardDto> ordered = new ArrayList<>();
+    for (String n : names) {
+      CardDto c = byName.get(n.toLowerCase(Locale.ROOT));
+      if (c != null) {
+        ordered.add(c);
+      }
+    }
+    return ordered;
   }
 
   private Map<String, CardDto> fetchCardsByIds(List<String> ids) {
