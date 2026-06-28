@@ -2,8 +2,6 @@
 # This file is merged automatically with docker-compose.yml when running
 # `docker-compose up` locally. Do NOT commit secrets here.
 
-version: "3.9"
-
 services:
   postgres:
     ports:

@@ -5,7 +5,7 @@ en el build (`mvn test`, 28 verdes); aquí se cubre la **verificación viva** (D
 flujos end-to-end, seguridad y rendimiento) que no se ejecuta en CI.
 
 > Convención: el frontend habla **solo** con el gateway en `http://localhost:8080`.
-> Sustituye `$TOKEN` por el `accessToken` devuelto al hacer login.
+> Sustituye `$TOKEN` por el `token` devuelto al hacer login.
 
 ---
 
@@ -70,7 +70,7 @@ curl -s -X POST $BASE_URL/api/auth/register -H "Content-Type: application/json" 
   -d '{"email":"eval@example.com","password":"Password123!","displayName":"Evaluador"}' > /dev/null
 
 TOKEN=$(curl -s -X POST $BASE_URL/api/auth/login -H "Content-Type: application/json" \
-  -d '{"email":"eval@example.com","password":"Password123!"}' | jq -r .accessToken)
+  -d '{"email":"eval@example.com","password":"Password123!"}' | jq -r .token)
 
 echo "Token: $TOKEN"
 ```
@@ -82,7 +82,7 @@ Invoke-RestMethod -Method Post "$BASE_URL/api/auth/register" -ContentType "appli
   -Body '{"email":"eval@example.com","password":"Password123!","displayName":"Evaluador"}'
 $login = Invoke-RestMethod -Method Post "$BASE_URL/api/auth/login" -ContentType "application/json" `
   -Body '{"email":"eval@example.com","password":"Password123!"}'
-$TOKEN = $login.accessToken
+$TOKEN = $login.token
 $TOKEN
 ```
 ✅ Si ves un token largo (`eyJ...`), el backend funciona de extremo a extremo.
@@ -171,13 +171,13 @@ curl -s -X POST http://localhost:8080/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com","password":"Password123!","displayName":"Tester"}'
 
-# Login → devuelve accessToken + refreshToken
+# Login → devuelve token + refreshToken
 curl -s -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com","password":"Password123!"}'
 ```
 ✅ Ambos devuelven un JWT válido.
-Guarda el token: `TOKEN=<accessToken>`.
+Guarda el token: `TOKEN=<token>`.
 
 ### 2.3 Protección JWT en el gateway
 ```bash
