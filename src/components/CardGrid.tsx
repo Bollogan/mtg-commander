@@ -1,9 +1,8 @@
 import { Col, Row } from 'react-bootstrap';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
 import { type Card } from '../types/cardType';
-import { FlipCard } from './FlipCard';
+import { CardTile } from './CardTile';
 
 type CardGridItem = Card & { deckCount?: number };
 
@@ -15,16 +14,6 @@ interface CardGridProps {
 
 export const CardGrid = ({ cards, loading = false, emptyMessage }: CardGridProps) => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
-
-  const formatUsd = (value?: string) => (value ? `$${value}` : '-.-');
-  const formatEur = (value?: string) => (value ? `€${value}` : '-.-');
-  const formatDeckCount = (count?: number) => {
-    if (count === undefined || count === null || count <= 0) {
-      return null;
-    }
-    return t('search.decksCount', { count });
-  };
 
   if (loading) {
     return <p className="text-center text-muted mt-4">{t('search.loading')}</p>;
@@ -43,28 +32,7 @@ export const CardGrid = ({ cards, loading = false, emptyMessage }: CardGridProps
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.03 }}
           >
-            <div className="card-shell h-100">
-              <div className="card-frame">
-                <FlipCard card={card} onImageClick={() => navigate(`/card/${card.id}`)} />
-              </div>
-              <div className="card-meta">
-                <div className="card-name">{card.name}</div>
-                <div className="card-type">{card.type_line}</div>
-                {formatDeckCount(card.deckCount) && (
-                  <div className="deck-count">{formatDeckCount(card.deckCount)}</div>
-                )}
-                <div className="card-prices">
-                  <div className="price-item">
-                    <span className="price-label">TCGplayer</span>
-                    <span className="price-value">{formatUsd(card.prices?.usd)}</span>
-                  </div>
-                  <div className="price-item">
-                    <span className="price-label">Cardmarket</span>
-                    <span className="price-value">{formatEur(card.prices?.eur)}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <CardTile card={card} />
           </motion.div>
         </Col>
       ))}
