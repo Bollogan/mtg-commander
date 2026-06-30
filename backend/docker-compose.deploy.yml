@@ -1,0 +1,35 @@
+# Public HTTPS edge overlay — for a real domain on a server (e.g. a GCP Compute Engine VM).
+#
+# Adds Caddy (automatic Let's Encrypt TLS) in front of the single-origin frontend and stops
+# publishing the frontend's plain :80 to the host, so Caddy owns 80/443.
+#
+# Run (from backend/):
+#   docker compose -f docker-compose.prod.yml -f docker-compose.deploy.yml --profile prod up -d --build
+#
+# Requirements:
+#   - DNS A records for planeswalkerstower.com and www → this VM's public IP.
+#   - The VM firewall must allow inbound TCP 80 and 443.
+#   - Docker Compose v2.24+ (for the `!reset` tag below).
+services:
+  frontend:
+    # Drop the host port from docker-compose.prod.yml: Caddy is the public edge now.
+    ports: !reset []
+
+  caddy:
+    profiles: ["prod"]
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+    networks: [mtg-net]
+
+volumes:
+  caddy_data:
+  caddy_config:

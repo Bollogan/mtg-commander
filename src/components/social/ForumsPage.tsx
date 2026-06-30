@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Button, Container } from 'react-bootstrap';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { createThread, fetchThreads } from '../../features/forum/forumSlice';
 
@@ -25,44 +26,49 @@ export function ForumsPage() {
   };
 
   return (
-    <div className="container py-4">
-      <h2>Forums</h2>
+    <Container className="page-container content-narrow">
+      <div className="page-header" style={{ textAlign: 'left', marginBottom: '1.25rem' }}>
+        <h1>Forums</h1>
+        <p className="text-muted mb-0">Discuss decks, rulings and the metagame with the community.</p>
+      </div>
 
       {isAuthenticated && (
-        <form onSubmit={submit} className="card card-body my-3">
-          <h6>Start a new forum</h6>
+        <form onSubmit={submit} className="deck-card p-3 mb-2">
+          <h2 className="h6 mb-2">Start a new forum</h2>
           <input className="form-control mb-2" placeholder="Title" value={title}
                  onChange={(e) => setTitle(e.target.value)} />
-          <input className="form-control mb-2" placeholder="Description (optional)" value={description}
+          <input className="form-control mb-3" placeholder="Description (optional)" value={description}
                  onChange={(e) => setDescription(e.target.value)} />
-          <div>
-            <button type="submit" className="btn btn-primary btn-sm" disabled={!title.trim()}>
-              Create
-            </button>
-          </div>
+          <Button type="submit" size="sm" disabled={!title.trim()}>Create forum</Button>
         </form>
       )}
 
-      <ul className="list-group">
-        {threads.map((t) => (
-          <li key={t.id} className="list-group-item d-flex justify-content-between align-items-start">
-            <div>
-              <Link to={`/forums/${t.id}`} className="fw-bold text-decoration-none">{t.title}</Link>
-              {t.description && <div className="text-muted small">{t.description}</div>}
-              <small className="text-muted">by {t.authorName}</small>
+      {threads.length === 0 ? (
+        <div className="grid-empty">
+          <span className="grid-empty__glyph" aria-hidden="true">✦</span>
+          <p className="mb-0">No forums yet. Start the first conversation.</p>
+        </div>
+      ) : (
+        <div className="thread-list">
+          {threads.map((t) => (
+            <div key={t.id} className="thread-row">
+              <div>
+                <Link to={`/forums/${t.id}`} className="thread-title">{t.title}</Link>
+                {t.description && <p className="thread-desc">{t.description}</p>}
+                <span className="thread-author">by {t.authorName}</span>
+              </div>
+              <span className="meta-pill">{t.postCount} posts</span>
             </div>
-            <span className="badge bg-secondary rounded-pill">{t.postCount} posts</span>
-          </li>
-        ))}
-        {threads.length === 0 && <li className="list-group-item text-muted">No forums yet.</li>}
-      </ul>
+          ))}
+        </div>
+      )}
 
       {cursor && (
-        <button className="btn btn-outline-secondary btn-sm mt-3"
+        <Button variant="outline-secondary" size="sm" className="mt-3"
                 onClick={() => dispatch(fetchThreads(cursor))}>
           Load more
-        </button>
+        </Button>
       )}
-    </div>
+    </Container>
   );
 }

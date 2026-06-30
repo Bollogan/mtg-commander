@@ -5,7 +5,14 @@ import axios from 'axios';
  * JWT (kept in localStorage by the auth slice); a response interceptor clears it on 401 so the
  * UI can route the user back to login.
  */
-export const API_BASE = import.meta.env.VITE_API_BASE || 'https://torresowo.myftp.org:7777/mtg-commander';
+/**
+ * API gateway base URL.
+ * - unset (local `npm run dev`) → talk to the gateway.
+ * - empty string (the nginx-proxied production build) → same-origin relative URLs, so the app
+ *   works behind any host/tunnel (LAN IP, Cloudflare, …) with no rebuild and no CORS.
+ */
+const rawApiBase = import.meta.env.VITE_API_BASE as string | undefined;
+export const API_BASE = rawApiBase === undefined ? 'https://torresowo.myftp.org:7777/mtg-commander' : rawApiBase;
 
 export const TOKEN_KEY = 'mtg.accessToken';
 export const REFRESH_KEY = 'mtg.refreshToken';

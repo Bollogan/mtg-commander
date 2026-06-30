@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Button, Card, Stack } from 'react-bootstrap';
+import { Alert, Button, Container } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { useAppDispatch } from '../store/hooks';
@@ -48,23 +48,35 @@ export const AccountPage = () => {
   };
 
   return (
-    <Card className="deck-card" style={{ maxWidth: 560, margin: '2rem auto' }}>
-      <Card.Body>
-        <Card.Title>Account &amp; privacy (GDPR)</Card.Title>
-        {error && <Alert variant="danger">{error}</Alert>}
-        <p className="text-muted">
-          Download everything we store about you, or permanently delete your account.
-          Deletion fans out across all services and removes your decks, posts and notifications.
+    <Container className="page-container content-narrow">
+      <div className="page-header" style={{ textAlign: 'left', marginBottom: '1.5rem' }}>
+        <h1>Account &amp; privacy</h1>
+        <p className="text-muted mb-0">Manage the data we hold about you under GDPR.</p>
+      </div>
+
+      {error && <Alert variant="danger">{error}</Alert>}
+
+      <section className="deck-card settings-card">
+        <h2>Your data</h2>
+        <p className="settings-lead">
+          Download a copy of everything we store about you — your profile, follows, badges and decks —
+          as a single JSON file.
         </p>
-        <Stack direction="horizontal" gap={2}>
-          <Button variant="outline-primary" onClick={onExport} disabled={busy}>
-            Export my data
-          </Button>
-          <Button variant="outline-danger" onClick={onDelete} disabled={busy}>
-            Delete my account
-          </Button>
-        </Stack>
-      </Card.Body>
-    </Card>
+        <Button variant="outline-primary" onClick={onExport} disabled={busy}>
+          {busy ? 'Working…' : 'Export my data'}
+        </Button>
+      </section>
+
+      <section className="deck-card settings-card danger-zone">
+        <h2>Delete account</h2>
+        <p className="settings-lead">
+          This permanently deletes your account. The removal fans out across every service and erases
+          your decks, posts, comments and notifications. This cannot be undone.
+        </p>
+        <Button variant="outline-danger" onClick={onDelete} disabled={busy}>
+          Delete my account
+        </Button>
+      </section>
+    </Container>
   );
 };

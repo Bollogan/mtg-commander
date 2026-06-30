@@ -118,7 +118,7 @@ export const GameSimulatorPage = () => {
                   <Button size="sm" onClick={() => send('DRAW', { count: 1 })}>Draw</Button>
                   <Button size="sm" onClick={() => send('DRAW', { count: 7 })}>Draw 7</Button>
                   <Button size="sm" variant="warning" onClick={() => send('MULLIGAN')}>Mulligan</Button>
-                  <Button size="sm" variant="outline-dark" onClick={() => send('END_TURN')}>End turn</Button>
+                  <Button size="sm" variant="outline-secondary" onClick={() => send('END_TURN')}>End turn</Button>
                 </Stack>
                 <GameBoard
                   player={me}

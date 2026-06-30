@@ -1,0 +1,16 @@
+# Caddy automatically obtains and renews Let's Encrypt TLS certificates for these domains.
+# It terminates HTTPS and forwards to the single-origin frontend (nginx), which in turn proxies
+# /api and /ws to the gateway. WebSockets pass through reverse_proxy transparently.
+#
+# Requirements: the domains below must have DNS A records pointing at this server's public IP,
+# and ports 80 + 443 must be reachable from the internet.
+
+{
+	# Used by Let's Encrypt for expiry notices. Change to your email.
+	email admin@planeswalkerstower.com
+}
+
+planeswalkerstower.com, www.planeswalkerstower.com {
+	encode zstd gzip
+	reverse_proxy frontend:80
+}

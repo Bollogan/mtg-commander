@@ -305,12 +305,12 @@ export const CardDetailPage = () => {
 
               {card.related_uris?.edhrec && (
                 <Button
-                  variant="outline-info"
+                  variant="outline-primary"
                   href={card.related_uris.edhrec}
                   target="_blank"
                   rel="noreferrer"
                 >
-                  EDHREC
+                  View on EDHREC ↗
                 </Button>
               )}
             </Stack>

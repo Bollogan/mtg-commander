@@ -1,0 +1,22 @@
+# Cloudflare quick-tunnel overlay — publishes the single-origin frontend to a public https URL.
+#
+# Usage (from backend/):
+#   docker compose -f docker-compose.prod.yml -f docker-compose.share.yml --profile prod up -d --build
+#   docker compose -f docker-compose.prod.yml -f docker-compose.share.yml logs -f cloudflared
+#
+# The cloudflared logs print a line like:
+#   https://<random-words>.trycloudflare.com
+# Share that URL — it routes straight to the frontend, which proxies /api and /ws to the gateway.
+# No Cloudflare account or token is required for a quick tunnel (the URL changes on each restart).
+#
+# Stop sharing:
+#   docker compose -f docker-compose.prod.yml -f docker-compose.share.yml --profile prod down
+services:
+  cloudflared:
+    profiles: ["prod"]
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate --url http://frontend:80
+    restart: unless-stopped
+    depends_on:
+      - frontend
+    networks: [mtg-net]

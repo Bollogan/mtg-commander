@@ -1,7 +1,6 @@
 import axios from 'axios';
 import { type Card } from '../types/cardType';
-
-const API_BASE = import.meta.env.VITE_API_BASE || 'https://torresowo.myftp.org:7777/mtg-commander';
+import { API_BASE } from '../api/client';
 
 export interface SearchResponse {
   cards: Card[];
