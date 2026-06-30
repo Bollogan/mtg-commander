@@ -1,11 +1,11 @@
 server:
-  port: 8081
+  port: 11028
 
 spring:
   application:
     name: auth-service
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/mtg_deck_builder}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:11020/mtg_deck_builder}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
     password: ${SPRING_DATASOURCE_PASSWORD:postgres}
   jpa:
@@ -19,7 +19,7 @@ spring:
 eureka:
   client:
     serviceUrl:
-      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:11024/eureka/}
     registry-fetch-interval-seconds: 5
   instance:
     preferIpAddress: true

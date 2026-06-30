@@ -5,7 +5,7 @@ import axios from 'axios';
  * JWT (kept in localStorage by the auth slice); a response interceptor clears it on 401 so the
  * UI can route the user back to login.
  */
-export const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080';
+export const API_BASE = import.meta.env.VITE_API_BASE || 'https://torresowo.myftp.org:7777/mtg-commander';
 
 export const TOKEN_KEY = 'mtg.accessToken';
 export const REFRESH_KEY = 'mtg.refreshToken';

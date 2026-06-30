@@ -6,11 +6,11 @@ spring:
     name: deck-service
   data:
     mongodb:
-      uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/mtg_deck}
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:11022/mtg_deck}
       auto-index-creation: true
     redis:
       host: ${SPRING_REDIS_HOST:localhost}
-      port: ${SPRING_REDIS_PORT:6379}
+      port: ${SPRING_REDIS_PORT:11026}
       password: ${SPRING_REDIS_PASSWORD:}
 
 # Scryfall integration + Redis cache (TTL 24h per plan, risk mitigation for 10 req/s limit)
@@ -22,7 +22,7 @@ scryfall:
 eureka:
   client:
     serviceUrl:
-      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:11024/eureka/}
     registry-fetch-interval-seconds: 5
   instance:
     preferIpAddress: true

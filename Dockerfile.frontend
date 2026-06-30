@@ -13,7 +13,7 @@ COPY index.html ./
 # Install dependencies
 RUN npm ci
 
-ARG VITE_API_BASE=http://localhost:8080
+ARG VITE_API_BASE=https://torresowo.myftp.org:7777/mtg-commander
 ENV VITE_API_BASE=$VITE_API_BASE
 
 # Copy source

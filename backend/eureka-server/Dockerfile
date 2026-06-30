@@ -18,6 +18,6 @@ WORKDIR /app
 # Copy JAR from builder
 COPY --from=builder /app/eureka-server/target/eureka-server-*.jar eureka-server.jar
 
-EXPOSE 8761
+EXPOSE 11024
 
 ENTRYPOINT ["java", "-jar", "eureka-server.jar"]

@@ -26,8 +26,8 @@ fi
 
 # Verificar que PostgreSQL está corriendo
 echo -e "${YELLOW}Verificando PostgreSQL...${NC}"
-if ! pg_isready -h localhost -p 5432 &> /dev/null; then
-    echo -e "${RED}PostgreSQL no está corriendo en localhost:5432${NC}"
+if ! pg_isready -h localhost -p 11020 &> /dev/null; then
+    echo -e "${RED}PostgreSQL no está corriendo en localhost:11020${NC}"
     echo -e "${YELLOW}Inicia PostgreSQL antes de continuar.${NC}"
     exit 1
 fi
@@ -65,12 +65,12 @@ start_service() {
 }
 
 # Iniciar Eureka Server (debe ser primero)
-start_service "eureka-server" "$BACKEND_DIR/eureka-server" "8761"
+start_service "eureka-server" "$BACKEND_DIR/eureka-server" "11024"
 
 # Esperar a que Eureka esté listo
 echo -e "${YELLOW}Esperando a que Eureka Server esté disponible...${NC}"
 for i in {1..30}; do
-    if curl -s http://localhost:8761/actuator/health &> /dev/null; then
+    if curl -s http://localhost:11024/actuator/health &> /dev/null; then
         echo -e "${GREEN}✓ Eureka Server está disponible${NC}"
         break
     fi
@@ -82,13 +82,13 @@ for i in {1..30}; do
 done
 
 # Iniciar API Gateway
-start_service "api-gateway" "$BACKEND_DIR/api-gateway" "8080"
+start_service "api-gateway" "$BACKEND_DIR/api-gateway" "11032"
 
 # Iniciar Auth Service
-start_service "auth-service" "$BACKEND_DIR/auth-service" "8081"
+start_service "auth-service" "$BACKEND_DIR/auth-service" "11028"
 
 # Iniciar Search Service
-start_service "search-service" "$BACKEND_DIR/search-service" "8082"
+start_service "search-service" "$BACKEND_DIR/search-service" "11030"
 
 # Iniciar Deck Service
 start_service "deck-service" "$BACKEND_DIR/deck-service" "8083"
@@ -99,10 +99,10 @@ echo -e "${GREEN}✓ Todos los servicios iniciados${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
 echo -e "${YELLOW}Servicios disponibles:${NC}"
-echo -e "  Eureka Dashboard:    ${GREEN}http://localhost:8761${NC}"
-echo -e "  API Gateway:         ${GREEN}http://localhost:8080${NC}"
-echo -e "  Auth Service:        ${GREEN}http://localhost:8081${NC}"
-echo -e "  Search Service:      ${GREEN}http://localhost:8082${NC}"
+echo -e "  Eureka Dashboard:    ${GREEN}http://localhost:11024${NC}"
+echo -e "  API Gateway:         ${GREEN}http://localhost:11032${NC}"
+echo -e "  Auth Service:        ${GREEN}http://localhost:11028${NC}"
+echo -e "  Search Service:      ${GREEN}http://localhost:11030${NC}"
 echo -e "  Deck Service:        ${GREEN}http://localhost:8083${NC}"
 echo ""
 echo -e "${YELLOW}Logs:${NC}"

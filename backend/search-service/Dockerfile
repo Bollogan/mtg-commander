@@ -18,6 +18,6 @@ WORKDIR /app
 # Copy JAR from builder
 COPY --from=builder /app/search-service/target/search-service-*.jar search-service.jar
 
-EXPOSE 8082
+EXPOSE 11030
 
 ENTRYPOINT ["java", "-jar", "search-service.jar"]
