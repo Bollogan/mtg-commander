@@ -16,7 +16,7 @@ ai:
 eureka:
   client:
     serviceUrl:
-      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:11024/eureka/}
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:11024/eureka-mtgc/eureka/}
     registry-fetch-interval-seconds: 5
   instance:
     preferIpAddress: true

@@ -72,7 +72,7 @@ services:
     networks:
       - mtg-net
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:11024/actuator/health | grep -q UP || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:11024/eureka-mtgc/actuator/health | grep -q UP || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -88,7 +88,7 @@ services:
     ports:
       - "11032:11032"
     environment:
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka/
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka-mtgc/eureka/
       JWT_SECRET: ${JWT_SECRET:-SGVsbG8gV29ybGQgVGhpcyBpcyBhIFNlY3JldCBLZXkgZm9yIEpXVCBFbmNvZGluZw==}
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
@@ -113,7 +113,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/mtg_deck_builder
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka/
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka-mtgc/eureka/
       JWT_SECRET: ${JWT_SECRET:-SGVsbG8gV29ybGQgVGhpcyBpcyBhIFNlY3JldCBLZXkgZm9yIEpXVCBFbmNvZGluZw==}
       # Optional: set GOOGLE_CLIENT_ID in your env (or .env) to enable Google Sign-In.
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
@@ -138,7 +138,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/mtg_deck_builder
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka/
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka-mtgc/eureka/
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
     depends_on:
@@ -164,7 +164,7 @@ services:
       - "8083:8083"
     environment:
       SPRING_DATA_MONGODB_URI: mongodb://mongo:mongo@mongodb:27017/mtg_forum?authSource=admin
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka/
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka-mtgc/eureka/
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
     depends_on:
@@ -192,7 +192,7 @@ services:
       SPRING_DATA_MONGODB_URI: mongodb://mongo:mongo@mongodb:27017/mtg_deck?authSource=admin
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka/
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka-mtgc/eureka/
     depends_on:
       mongodb:
         condition: service_healthy
@@ -217,7 +217,7 @@ services:
     environment:
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka/
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka-mtgc/eureka/
     depends_on:
       redis:
         condition: service_healthy
@@ -238,7 +238,7 @@ services:
     ports:
       - "8086:8086"
     environment:
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka/
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka-mtgc/eureka/
     depends_on:
       eureka-server:
         condition: service_healthy
@@ -259,7 +259,7 @@ services:
     environment:
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka/
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka-mtgc/eureka/
     depends_on:
       redis:
         condition: service_healthy
@@ -280,7 +280,7 @@ services:
     ports:
       - "11030:11030"
     environment:
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka/
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka-mtgc/eureka/
     depends_on:
       eureka-server:
         condition: service_healthy

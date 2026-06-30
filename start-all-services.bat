@@ -62,7 +62,7 @@ echo [OK] Servicios iniciados en Docker
 color 0F
 echo.
 echo Accesos:
-echo - Eureka:       http://localhost:11024
+echo - Eureka:       http://localhost:11024/eureka-mtgc/
 echo - API Gateway:  http://localhost:11032
 echo - PostgreSQL:   localhost:11020
 echo.
@@ -116,7 +116,7 @@ set retry=0
 :eureka_check
 timeout /t 1 /nobreak >nul
 set /a retry=!retry!+1
-powershell -NoProfile -Command "try { Invoke-WebRequest -Uri 'http://localhost:11024/actuator/health' -UseBasicParsing -ErrorAction Stop; exit 0 } catch { exit 1 }" >nul 2>&1
+powershell -NoProfile -Command "try { Invoke-WebRequest -Uri 'http://localhost:11024/eureka-mtgc/actuator/health' -UseBasicParsing -ErrorAction Stop; exit 0 } catch { exit 1 }" >nul 2>&1
 if %errorlevel% equ 0 (
     color 0A
     echo [OK] Eureka disponible
@@ -177,7 +177,7 @@ color 0F
 echo ========================================
 echo.
 echo Accesos:
-echo - Eureka:       http://localhost:11024
+echo - Eureka:       http://localhost:11024/eureka-mtgc/
 echo - API Gateway:  http://localhost:11032
 echo - Auth Service: http://localhost:11028
 echo - Search Service: http://localhost:11030

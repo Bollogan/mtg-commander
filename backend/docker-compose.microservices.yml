@@ -34,7 +34,7 @@ services:
     depends_on:
       - postgres
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:11024/actuator/health > /dev/null || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:11024/eureka-mtgc/actuator/health > /dev/null || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -49,7 +49,7 @@ services:
       - "11032:11032"
     environment:
       SPRING_APPLICATION_NAME: api-gateway
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka/
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka-mtgc/eureka/
     depends_on:
       eureka-server:
         condition: service_healthy
@@ -69,7 +69,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/mtg_deck_builder
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka/
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka-mtgc/eureka/
       JWT_SECRET: SGVsbG8gV29ybGQgVGhpcyBpcyBhIFNlY3JldCBLZXkgZm9yIEpXVCBFbmNvZGluZw==
     depends_on:
       postgres:
@@ -89,7 +89,7 @@ services:
       - "11030:11030"
     environment:
       SPRING_APPLICATION_NAME: search-service
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka/
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka-mtgc/eureka/
     depends_on:
       eureka-server:
         condition: service_healthy
@@ -109,7 +109,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/mtg_deck_builder
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka/
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka-mtgc/eureka/
       JWT_SECRET: SGVsbG8gV29ybGQgVGhpcyBpcyBhIFNlY3JldCBLZXkgZm9yIEpXVCBFbmNvZGluZw==
     depends_on:
       postgres:

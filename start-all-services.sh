@@ -70,7 +70,7 @@ start_service "eureka-server" "$BACKEND_DIR/eureka-server" "11024"
 # Esperar a que Eureka esté listo
 echo -e "${YELLOW}Esperando a que Eureka Server esté disponible...${NC}"
 for i in {1..30}; do
-    if curl -s http://localhost:11024/actuator/health &> /dev/null; then
+    if curl -s http://localhost:11024/eureka-mtgc/actuator/health &> /dev/null; then
         echo -e "${GREEN}✓ Eureka Server está disponible${NC}"
         break
     fi
@@ -99,7 +99,7 @@ echo -e "${GREEN}✓ Todos los servicios iniciados${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
 echo -e "${YELLOW}Servicios disponibles:${NC}"
-echo -e "  Eureka Dashboard:    ${GREEN}http://localhost:11024${NC}"
+echo -e "  Eureka Dashboard:    ${GREEN}http://localhost:11024/eureka-mtgc/${NC}"
 echo -e "  API Gateway:         ${GREEN}http://localhost:11032${NC}"
 echo -e "  Auth Service:        ${GREEN}http://localhost:11028${NC}"
 echo -e "  Search Service:      ${GREEN}http://localhost:11030${NC}"

@@ -1,5 +1,7 @@
 server:
   port: 11024
+  servlet:
+    context-path: /eureka-mtgc
 
 eureka:
   instance:
@@ -8,7 +10,7 @@ eureka:
     registerWithEureka: false
     fetchRegistry: false
     serviceUrl:
-      defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka/
+      defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka-mtgc/eureka/
   server:
     enableSelfPreservation: false
     evictionIntervalTimerInMs: 3000
