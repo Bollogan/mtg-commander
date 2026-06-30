@@ -14,17 +14,17 @@ echo.
 
 echo [1/3] Realizando Git Pull...
 cd /d "%SCRIPT_DIR%"
-git pull > "%TEMP%\mtg_git_pull.txt" 2>&1
+git pull --no-rebase --no-edit > "%TEMP%\mtg_git_pull.txt" 2>&1
 set PULL_STATUS=%errorlevel%
 type "%TEMP%\mtg_git_pull.txt"
 
 if %PULL_STATUS% neq 0 (
     echo.
-    echo [ADVERTENCIA] Fallo al sincronizar con git. Continuando con archivos locales...
+    echo [ADVERTENCIA] Fallo al sincronizar con git o existen conflictos. Continuando con archivos locales...
     set CHANGES=0
 ) else (
     findstr /C:"Already up to date" "%TEMP%\mtg_git_pull.txt" >nul
-    if %errorlevel% equ 0 (
+    if !errorlevel! equ 0 (
         echo.
         echo [OK] El repositorio ya esta actualizado.
         set CHANGES=0
