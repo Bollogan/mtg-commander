@@ -5,15 +5,15 @@
 services:
   postgres:
     ports:
-      - "5432:5432"
+      - "11020:5432"
 
   mongodb:
     ports:
-      - "27017:27017"
+      - "11022:27017"
 
   redis:
     ports:
-      - "6379:6379"
+      - "11026:6379"
 
   eureka-server:
     environment:

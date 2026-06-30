@@ -7,12 +7,12 @@ import axios from 'axios';
  */
 /**
  * API gateway base URL.
- * - unset (local `npm run dev`) → talk to the gateway directly on :8080.
+ * - unset (local `npm run dev`) → talk to the gateway.
  * - empty string (the nginx-proxied production build) → same-origin relative URLs, so the app
  *   works behind any host/tunnel (LAN IP, Cloudflare, …) with no rebuild and no CORS.
  */
 const rawApiBase = import.meta.env.VITE_API_BASE as string | undefined;
-export const API_BASE = rawApiBase === undefined ? 'http://localhost:8080' : rawApiBase;
+export const API_BASE = rawApiBase === undefined ? 'https://torresowo.myftp.org:7777/mtg-commander' : rawApiBase;
 
 export const TOKEN_KEY = 'mtg.accessToken';
 export const REFRESH_KEY = 'mtg.refreshToken';

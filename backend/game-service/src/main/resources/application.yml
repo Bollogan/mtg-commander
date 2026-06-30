@@ -7,7 +7,7 @@ spring:
   data:
     redis:
       host: ${SPRING_REDIS_HOST:localhost}
-      port: ${SPRING_REDIS_PORT:6379}
+      port: ${SPRING_REDIS_PORT:11026}
       password: ${SPRING_REDIS_PASSWORD:}
 
 # Game state session TTL in Redis (abandoned rooms expire)
@@ -17,7 +17,7 @@ game:
 eureka:
   client:
     serviceUrl:
-      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:11024/eureka/}
     registry-fetch-interval-seconds: 5
   instance:
     preferIpAddress: true

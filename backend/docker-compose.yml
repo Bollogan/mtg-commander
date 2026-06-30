@@ -14,7 +14,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5432:5432"
+      - "11020:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -33,7 +33,7 @@ services:
       MONGO_INITDB_ROOT_USERNAME: mongo
       MONGO_INITDB_ROOT_PASSWORD: mongo
     ports:
-      - "27017:27017"
+      - "11022:27017"
     volumes:
       - mongodb_data:/data/db
     networks:
@@ -49,7 +49,7 @@ services:
     image: redis:7-alpine
     container_name: mtg-redis
     ports:
-      - "6379:6379"
+      - "11026:6379"
     volumes:
       - redis_data:/data
     networks:
@@ -68,11 +68,11 @@ services:
       dockerfile: eureka-server/Dockerfile
     container_name: mtg-eureka
     ports:
-      - "8761:8761"
+      - "11024:11024"
     networks:
       - mtg-net
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8761/actuator/health | grep -q UP || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:11024/actuator/health | grep -q UP || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -86,11 +86,12 @@ services:
       dockerfile: api-gateway/Dockerfile
     container_name: mtg-gateway
     ports:
-      - "8080:8080"
+      - "11032:11032"
     environment:
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka/
       JWT_SECRET: ${JWT_SECRET:-SGVsbG8gV29ybGQgVGhpcyBpcyBhIFNlY3JldCBLZXkgZm9yIEpXVCBFbmNvZGluZw==}
       SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
     depends_on:
       eureka-server:
         condition: service_healthy
@@ -107,12 +108,12 @@ services:
       dockerfile: auth-service/Dockerfile
     container_name: mtg-auth
     ports:
-      - "8081:8081"
+      - "11028:11028"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/mtg_deck_builder
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka/
       JWT_SECRET: ${JWT_SECRET:-SGVsbG8gV29ybGQgVGhpcyBpcyBhIFNlY3JldCBLZXkgZm9yIEpXVCBFbmNvZGluZw==}
       # Optional: set GOOGLE_CLIENT_ID in your env (or .env) to enable Google Sign-In.
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
@@ -137,8 +138,9 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/mtg_deck_builder
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka/
       SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
     depends_on:
       postgres:
         condition: service_healthy
@@ -162,8 +164,9 @@ services:
       - "8083:8083"
     environment:
       SPRING_DATA_MONGODB_URI: mongodb://mongo:mongo@mongodb:27017/mtg_forum?authSource=admin
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka/
       SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
     depends_on:
       mongodb:
         condition: service_healthy
@@ -188,7 +191,8 @@ services:
     environment:
       SPRING_DATA_MONGODB_URI: mongodb://mongo:mongo@mongodb:27017/mtg_deck?authSource=admin
       SPRING_REDIS_HOST: redis
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_REDIS_PORT: 6379
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka/
     depends_on:
       mongodb:
         condition: service_healthy
@@ -212,7 +216,8 @@ services:
       - "8085:8085"
     environment:
       SPRING_REDIS_HOST: redis
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_REDIS_PORT: 6379
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka/
     depends_on:
       redis:
         condition: service_healthy
@@ -233,7 +238,7 @@ services:
     ports:
       - "8086:8086"
     environment:
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka/
     depends_on:
       eureka-server:
         condition: service_healthy
@@ -253,7 +258,8 @@ services:
       - "8087:8087"
     environment:
       SPRING_REDIS_HOST: redis
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_REDIS_PORT: 6379
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka/
     depends_on:
       redis:
         condition: service_healthy
@@ -272,9 +278,9 @@ services:
       dockerfile: search-service/Dockerfile
     container_name: mtg-search
     ports:
-      - "8088:8082"
+      - "11030:11030"
     environment:
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka/
     depends_on:
       eureka-server:
         condition: service_healthy
@@ -288,7 +294,7 @@ services:
       context: ..
       dockerfile: Dockerfile.frontend
       args:
-        VITE_API_BASE: http://localhost:8080
+        VITE_API_BASE: http://localhost:11032
     container_name: mtg-frontend
     ports:
       - "3000:80"

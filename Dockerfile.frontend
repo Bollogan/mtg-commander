@@ -16,7 +16,7 @@ RUN npm ci
 # Empty by default = same-origin relative URLs. The nginx layer below reverse-proxies /api and
 # /ws to the gateway, so the app works behind any host/tunnel with no CORS and no rebuild.
 # Override only if you intentionally want the browser to hit a separate gateway origin.
-ARG VITE_API_BASE=""
+ARG VITE_API_BASE=https://torresowo.myftp.org:7777/mtg-commander
 ENV VITE_API_BASE=$VITE_API_BASE
 
 # Optional: Google Sign-In client id (same value as the auth-service GOOGLE_CLIENT_ID).

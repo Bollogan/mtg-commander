@@ -18,6 +18,6 @@ WORKDIR /app
 # Copy JAR from builder
 COPY --from=builder /app/auth-service/target/auth-service-*.jar auth-service.jar
 
-EXPOSE 8081
+EXPOSE 11028
 
 ENTRYPOINT ["java", "-jar", "auth-service.jar"]
