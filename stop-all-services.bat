@@ -11,19 +11,27 @@ echo Deteniendo Microservicios
 echo ========================================
 echo.
 
-REM Array de servicios
-set services=Eureka Server API Gateway Auth Service Search Service Deck Service
-
-for %%s in (%services%) do (
-    set service=%%s
-    echo Deteniendo !service!...
-    taskkill /FI "WINDOWTITLE eq !service!" /T /F >nul 2>nul
+REM Array de servicios (títulos de ventana entrecomillados para preservar los espacios)
+for %%s in (
+    "Eureka Server"
+    "API Gateway"
+    "Auth Service"
+    "Search Service"
+    "Deck Service"
+    "User Service"
+    "Forum Service"
+    "Game Service"
+    "AI Service"
+    "Notification Service"
+) do (
+    echo Deteniendo %%~s...
+    taskkill /FI "WINDOWTITLE eq %%~s" /T /F >nul 2>nul
     if !errorlevel! equ 0 (
         color 0A
-        echo [OK] !service! detenido
+        echo [OK] %%~s detenido
         color 0F
     ) else (
-        echo [INFO] !service! no estaba corriendo
+        echo [INFO] %%~s no estaba corriendo
     )
 )
 

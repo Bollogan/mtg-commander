@@ -7,6 +7,14 @@ setlocal enabledelayedexpansion
 set SCRIPT_DIR=%~dp0
 set BACKEND_DIR=%SCRIPT_DIR%backend
 
+REM Perfiles necesarios para levantar TODOS los microservicios (no solo el subconjunto base).
+set PROFILES=--profile fase2 --profile fase3 --profile fase4
+
+REM Detectar el comando de compose disponible: v2 ("docker compose") o v1 ("docker-compose").
+set "COMPOSE=docker compose"
+docker compose version >nul 2>nul
+if %errorlevel% neq 0 set "COMPOSE=docker-compose"
+
 echo ===================================================
 echo   Control Docker Compose - Iniciar Servicios
 echo ===================================================
@@ -56,11 +64,11 @@ if "!CHANGES!"=="1" (
     ) else (
         echo Nuevos cambios detectados. Compilando y levantando contenedores...
     )
-    docker-compose up --build -d
+    %COMPOSE% %PROFILES% up --build -d
 ) else (
     if "!RUNNING!"=="0" (
         echo Repositorio sin cambios, pero contenedores apagados. Levantando...
-        docker-compose up -d
+        %COMPOSE% %PROFILES% up -d
     ) else (
         echo Todo actualizado y en ejecucion.
     )

@@ -26,7 +26,5 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
   public void registerStompEndpoints(StompEndpointRegistry registry) {
     registry.addEndpoint("/ws/game")
         .setAllowedOriginPatterns("*");
-    // Native WebSocket endpoint (no SockJS) keeps the client dependency-light and works
-    // through the gateway's ws:// passthrough.
   }
 }

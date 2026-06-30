@@ -162,10 +162,55 @@ color 0F
 echo.
 echo Iniciando Deck Service...
 cd /d "%BACKEND_DIR%\deck-service"
-start "Deck Service" /min cmd /c "title Deck Service && mvn clean spring-boot:run -Dspring-boot.run.arguments=\"--server.port=8083\" > \"%SCRIPT_DIR%logs\deck-service.log\" 2>&1"
+start "Deck Service" /min cmd /c "title Deck Service && mvn clean spring-boot:run -Dspring-boot.run.arguments=\"--server.port=8084\" > \"%SCRIPT_DIR%logs\deck-service.log\" 2>&1"
 timeout /t 3 /nobreak >nul
 color 0A
 echo [OK] Deck Service iniciado
+color 0F
+
+echo.
+echo Iniciando User Service...
+cd /d "%BACKEND_DIR%\user-service"
+start "User Service" /min cmd /c "title User Service && mvn clean spring-boot:run -Dspring-boot.run.arguments=\"--server.port=8082\" > \"%SCRIPT_DIR%logs\user-service.log\" 2>&1"
+timeout /t 3 /nobreak >nul
+color 0A
+echo [OK] User Service iniciado
+color 0F
+
+echo.
+echo Iniciando Forum Service...
+cd /d "%BACKEND_DIR%\forum-service"
+start "Forum Service" /min cmd /c "title Forum Service && mvn clean spring-boot:run -Dspring-boot.run.arguments=\"--server.port=8083\" > \"%SCRIPT_DIR%logs\forum-service.log\" 2>&1"
+timeout /t 3 /nobreak >nul
+color 0A
+echo [OK] Forum Service iniciado
+color 0F
+
+echo.
+echo Iniciando Game Service...
+cd /d "%BACKEND_DIR%\game-service"
+start "Game Service" /min cmd /c "title Game Service && mvn clean spring-boot:run -Dspring-boot.run.arguments=\"--server.port=8085\" > \"%SCRIPT_DIR%logs\game-service.log\" 2>&1"
+timeout /t 3 /nobreak >nul
+color 0A
+echo [OK] Game Service iniciado
+color 0F
+
+echo.
+echo Iniciando AI Service...
+cd /d "%BACKEND_DIR%\ai-service"
+start "AI Service" /min cmd /c "title AI Service && mvn clean spring-boot:run -Dspring-boot.run.arguments=\"--server.port=8086\" > \"%SCRIPT_DIR%logs\ai-service.log\" 2>&1"
+timeout /t 3 /nobreak >nul
+color 0A
+echo [OK] AI Service iniciado
+color 0F
+
+echo.
+echo Iniciando Notification Service...
+cd /d "%BACKEND_DIR%\notification-service"
+start "Notification Service" /min cmd /c "title Notification Service && mvn clean spring-boot:run -Dspring-boot.run.arguments=\"--server.port=8087\" > \"%SCRIPT_DIR%logs\notification-service.log\" 2>&1"
+timeout /t 3 /nobreak >nul
+color 0A
+echo [OK] Notification Service iniciado
 color 0F
 
 cls
@@ -181,7 +226,12 @@ echo - Eureka:       http://localhost:11024
 echo - API Gateway:  http://localhost:11032
 echo - Auth Service: http://localhost:11028
 echo - Search Service: http://localhost:11030
-echo - Deck Service: http://localhost:8083
+echo - Deck Service: http://localhost:8084
+echo - User Service: http://localhost:8082
+echo - Forum Service: http://localhost:8083
+echo - Game Service: http://localhost:8085
+echo - AI Service: http://localhost:8086
+echo - Notification Service: http://localhost:8087
 echo.
 echo Logs en: %SCRIPT_DIR%logs\
 echo.

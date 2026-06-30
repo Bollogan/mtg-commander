@@ -13,8 +13,6 @@ services:
       POSTGRES_DB: mtg_deck_builder
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-    ports:
-      - "11020:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -32,8 +30,6 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: mongo
       MONGO_INITDB_ROOT_PASSWORD: mongo
-    ports:
-      - "11022:27017"
     volumes:
       - mongodb_data:/data/db
     networks:
@@ -48,8 +44,6 @@ services:
   redis:
     image: redis:7-alpine
     container_name: mtg-redis
-    ports:
-      - "11026:6379"
     volumes:
       - redis_data:/data
     networks:
@@ -107,8 +101,6 @@ services:
       context: .
       dockerfile: auth-service/Dockerfile
     container_name: mtg-auth
-    ports:
-      - "11028:11028"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/mtg_deck_builder
       SPRING_DATASOURCE_USERNAME: postgres
@@ -132,8 +124,6 @@ services:
       context: .
       dockerfile: user-service/Dockerfile
     container_name: mtg-user
-    ports:
-      - "8082:8082"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/mtg_deck_builder
       SPRING_DATASOURCE_USERNAME: postgres
@@ -160,8 +150,6 @@ services:
       context: .
       dockerfile: forum-service/Dockerfile
     container_name: mtg-forum
-    ports:
-      - "8083:8083"
     environment:
       SPRING_DATA_MONGODB_URI: mongodb://mongo:mongo@mongodb:27017/mtg_forum?authSource=admin
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka/
@@ -186,8 +174,6 @@ services:
       context: .
       dockerfile: deck-service/Dockerfile
     container_name: mtg-deck
-    ports:
-      - "8084:8084"
     environment:
       SPRING_DATA_MONGODB_URI: mongodb://mongo:mongo@mongodb:27017/mtg_deck?authSource=admin
       SPRING_REDIS_HOST: redis
@@ -212,8 +198,6 @@ services:
       context: .
       dockerfile: game-service/Dockerfile
     container_name: mtg-game
-    ports:
-      - "8085:8085"
     environment:
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
@@ -235,8 +219,6 @@ services:
       context: .
       dockerfile: ai-service/Dockerfile
     container_name: mtg-ai
-    ports:
-      - "8086:8086"
     environment:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka/
     depends_on:
@@ -254,8 +236,6 @@ services:
       context: .
       dockerfile: notification-service/Dockerfile
     container_name: mtg-notification
-    ports:
-      - "8087:8087"
     environment:
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
@@ -277,8 +257,6 @@ services:
       context: .
       dockerfile: search-service/Dockerfile
     container_name: mtg-search
-    ports:
-      - "11030:11030"
     environment:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka/
     depends_on:
@@ -296,14 +274,15 @@ services:
       args:
         VITE_API_BASE: http://localhost:11032
     container_name: mtg-frontend
-    ports:
-      - "3000:80"
     depends_on:
       - api-gateway
     networks:
       - mtg-net
+    # Perfil propio: el frontend de produccion vive en Firebase
+    # (planeswalkerstower.web.app). Este contenedor es solo para correr el
+    # front en local; el deploy de backend (fase2/3/4) no lo arranca.
     profiles:
-      - fase2
+      - frontend
 
 # ─── Volumes & Networks ────────────────────────────────────────────────────
 

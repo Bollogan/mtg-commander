@@ -91,7 +91,22 @@ start_service "auth-service" "$BACKEND_DIR/auth-service" "11028"
 start_service "search-service" "$BACKEND_DIR/search-service" "11030"
 
 # Iniciar Deck Service
-start_service "deck-service" "$BACKEND_DIR/deck-service" "8083"
+start_service "deck-service" "$BACKEND_DIR/deck-service" "8084"
+
+# Iniciar User Service
+start_service "user-service" "$BACKEND_DIR/user-service" "8082"
+
+# Iniciar Forum Service
+start_service "forum-service" "$BACKEND_DIR/forum-service" "8083"
+
+# Iniciar Game Service
+start_service "game-service" "$BACKEND_DIR/game-service" "8085"
+
+# Iniciar AI Service
+start_service "ai-service" "$BACKEND_DIR/ai-service" "8086"
+
+# Iniciar Notification Service
+start_service "notification-service" "$BACKEND_DIR/notification-service" "8087"
 
 echo ""
 echo -e "${GREEN}========================================${NC}"
@@ -103,7 +118,12 @@ echo -e "  Eureka Dashboard:    ${GREEN}http://localhost:11024${NC}"
 echo -e "  API Gateway:         ${GREEN}http://localhost:11032${NC}"
 echo -e "  Auth Service:        ${GREEN}http://localhost:11028${NC}"
 echo -e "  Search Service:      ${GREEN}http://localhost:11030${NC}"
-echo -e "  Deck Service:        ${GREEN}http://localhost:8083${NC}"
+echo -e "  Deck Service:        ${GREEN}http://localhost:8084${NC}"
+echo -e "  User Service:        ${GREEN}http://localhost:8082${NC}"
+echo -e "  Forum Service:       ${GREEN}http://localhost:8083${NC}"
+echo -e "  Game Service:        ${GREEN}http://localhost:8085${NC}"
+echo -e "  AI Service:          ${GREEN}http://localhost:8086${NC}"
+echo -e "  Notification Service:${GREEN}http://localhost:8087${NC}"
 echo ""
 echo -e "${YELLOW}Logs:${NC}"
 echo -e "  tail -f logs/eureka-server.log"
@@ -111,6 +131,11 @@ echo -e "  tail -f logs/api-gateway.log"
 echo -e "  tail -f logs/auth-service.log"
 echo -e "  tail -f logs/search-service.log"
 echo -e "  tail -f logs/deck-service.log"
+echo -e "  tail -f logs/user-service.log"
+echo -e "  tail -f logs/forum-service.log"
+echo -e "  tail -f logs/game-service.log"
+echo -e "  tail -f logs/ai-service.log"
+echo -e "  tail -f logs/notification-service.log"
 echo ""
 echo -e "${YELLOW}Para detener todos los servicios, ejecuta:${NC}"
 echo -e "  ./stop-all-services.sh"

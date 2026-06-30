@@ -16,7 +16,7 @@ echo -e "${GREEN}Deteniendo Microservicios${NC}"
 echo -e "${GREEN}========================================${NC}"
 
 # Array de servicios
-services=("eureka-server" "api-gateway" "auth-service" "search-service" "deck-service")
+services=("eureka-server" "api-gateway" "auth-service" "search-service" "deck-service" "user-service" "forum-service" "game-service" "ai-service" "notification-service")
 
 for service in "${services[@]}"; do
     pid_file="$SCRIPT_DIR/.${service}.pid"
