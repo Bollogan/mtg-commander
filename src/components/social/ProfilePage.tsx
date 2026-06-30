@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import { Container, Spinner } from 'react-bootstrap';
+import { motion } from 'framer-motion';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { fetchProfile } from '../../features/profile/profileSlice';
 import { FollowButton } from './FollowButton';
@@ -16,48 +18,77 @@ export function ProfilePage() {
     if (id) dispatch(fetchProfile(id));
   }, [dispatch, id]);
 
-  if (status === 'loading') return <div className="container py-4">Loading profile…</div>;
-  if (!profile) return <div className="container py-4">Profile not found.</div>;
+  if (status === 'loading') {
+    return (
+      <Container className="page-container text-center">
+        <Spinner animation="border" />
+      </Container>
+    );
+  }
+  if (!profile) {
+    return (
+      <Container className="page-container">
+        <div className="grid-empty">
+          <span className="grid-empty__glyph" aria-hidden="true">✦</span>
+          <p className="mb-0">We couldn&apos;t find that profile.</p>
+        </div>
+      </Container>
+    );
+  }
 
   return (
-    <div className="container py-4">
-      <div className="d-flex align-items-center gap-3 mb-3">
-        {profile.avatarUrl ? (
-          <img src={profile.avatarUrl} alt={profile.displayName} width={72} height={72}
-               className="rounded-circle" />
-        ) : (
-          <div className="rounded-circle bg-secondary d-flex align-items-center justify-content-center"
-               style={{ width: 72, height: 72, color: 'white', fontSize: 28 }}>
-            {profile.displayName.charAt(0).toUpperCase()}
+    <Container className="page-container content-narrow">
+      <motion.section
+        className="deck-card profile-head"
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+      >
+        <div className="profile-id">
+          {profile.avatarUrl ? (
+            <img className="profile-avatar" src={profile.avatarUrl} alt={profile.displayName} />
+          ) : (
+            <div className="profile-avatar--fallback" aria-hidden="true">
+              {profile.displayName.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <div className="flex-grow-1">
+            <h1 className="profile-name">{profile.displayName}</h1>
+            {profile.country && <span className="profile-meta">{profile.country}</span>}
           </div>
-        )}
-        <div className="flex-grow-1">
-          <h3 className="mb-0">{profile.displayName}</h3>
-          {profile.country && <small className="text-muted">{profile.country}</small>}
+          <FollowButton userId={profile.id} />
         </div>
-        <FollowButton userId={profile.id} />
-      </div>
 
-      {profile.bio && <p>{profile.bio}</p>}
+        {profile.bio && <p className="profile-bio">{profile.bio}</p>}
 
-      <div className="d-flex gap-4 mb-4">
-        <div><strong>{profile.followerCount}</strong> followers</div>
-        <div><strong>{profile.followingCount}</strong> following</div>
-        <div><strong>{profile.deckCount}</strong> decks</div>
-      </div>
+        <div className="stat-group">
+          <div className="stat">
+            <span className="stat__num">{profile.followerCount}</span>
+            <span className="stat__label">Followers</span>
+          </div>
+          <div className="stat">
+            <span className="stat__num">{profile.followingCount}</span>
+            <span className="stat__label">Following</span>
+          </div>
+          <div className="stat">
+            <span className="stat__num">{profile.deckCount}</span>
+            <span className="stat__label">Decks</span>
+          </div>
+        </div>
+      </motion.section>
 
-      <h5>Badges</h5>
+      <h2 className="section-title">Badges</h2>
       {badges.length === 0 ? (
-        <p className="text-muted">No badges yet.</p>
+        <p className="text-muted">No badges earned yet.</p>
       ) : (
         <div className="d-flex flex-wrap gap-2">
           {badges.map((b) => (
-            <span key={b.type} className="badge bg-info text-dark" title={b.description}>
+            <span key={b.type} className="badge-soft" title={b.description}>
               {b.label}
             </span>
           ))}
         </div>
       )}
-    </div>
+    </Container>
   );
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Alert, Badge, Button, Card, Col, Form, Row, Stack } from 'react-bootstrap';
+import { Link } from 'react-router-dom';
+import { Alert, Badge, Button, Card, Col, Container, Form, Row, Stack } from 'react-bootstrap';
 import { apiClient } from '../api/client';
 import { useAppSelector } from '../store/hooks';
 
@@ -63,9 +64,18 @@ export const EventsPage = () => {
     s === 'OPEN' ? 'success' : s === 'FULL' ? 'warning' : 'secondary';
 
   return (
-    <div className="container py-3">
-      <h3 className="mb-3">Community events</h3>
+    <Container className="page-container">
+      <div className="page-header" style={{ textAlign: 'left', marginBottom: '1.5rem' }}>
+        <h1>Community events</h1>
+        <p className="text-muted mb-0">Find tournaments and casual pods, or organize your own.</p>
+      </div>
       {error && <Alert variant="warning" onClose={() => setError(null)} dismissible>{error}</Alert>}
+
+      {!isAuthenticated && (
+        <p className="text-muted">
+          <Link to="/login">Log in</Link> to organize events or register for a seat.
+        </p>
+      )}
 
       {isAuthenticated && (
         <Card className="deck-card mb-4">
@@ -127,8 +137,13 @@ export const EventsPage = () => {
             </Card>
           </Col>
         ))}
-        {events.length === 0 && <p className="text-muted">No events yet.</p>}
       </Row>
-    </div>
+      {events.length === 0 && (
+        <div className="grid-empty">
+          <span className="grid-empty__glyph" aria-hidden="true">✦</span>
+          <p className="mb-0">No events scheduled yet. Be the first to organize one.</p>
+        </div>
+      )}
+    </Container>
   );
 };

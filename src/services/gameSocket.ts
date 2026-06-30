@@ -4,8 +4,9 @@ import type { GameAction, GameState } from '../features/game/gameSlice';
 
 /** Derives the ws:// (or wss://) broker URL from the HTTP API base. */
 const brokerUrl = (): string => {
-  const base = API_BASE.replace(/^http/, 'ws');
-  return `${base}/ws/game`;
+  // Relative build (API_BASE === '') → derive from the current origin so wss works behind a tunnel.
+  const httpBase = API_BASE || window.location.origin;
+  return `${httpBase.replace(/^http/, 'ws')}/ws/game`;
 };
 
 export interface GameConnection {

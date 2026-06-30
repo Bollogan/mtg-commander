@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { Button, Container } from 'react-bootstrap';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { createPost, fetchPosts } from '../../features/forum/forumSlice';
 import { CommentList } from './CommentList';
@@ -27,12 +28,12 @@ export function ForumThread() {
   };
 
   return (
-    <div className="container py-4">
-      <Link to="/forums" className="text-decoration-none">← Back to forums</Link>
+    <Container className="page-container content-narrow">
+      <Link to="/forums" className="back-link">← Back to forums</Link>
 
       {isAuthenticated && (
-        <form onSubmit={submit} className="card card-body my-3">
-          <h6>New post</h6>
+        <form onSubmit={submit} className="deck-card p-3 my-3">
+          <h2 className="h6 mb-2">New post</h2>
           <input
             className="form-control mb-2"
             placeholder="Title"
@@ -40,45 +41,45 @@ export function ForumThread() {
             onChange={(e) => setTitle(e.target.value)}
           />
           <textarea
-            className="form-control mb-2"
+            className="form-control mb-3"
             placeholder="Share your thoughts…"
             rows={3}
             value={body}
             onChange={(e) => setBody(e.target.value)}
           />
-          <div>
-            <button type="submit" className="btn btn-primary btn-sm"
-                    disabled={!title.trim() || !body.trim()}>
-              Publish
-            </button>
-          </div>
+          <Button type="submit" size="sm" disabled={!title.trim() || !body.trim()}>
+            Publish
+          </Button>
         </form>
       )}
 
-      {posts.length === 0 && <p className="text-muted">No posts yet. Be the first!</p>}
+      {posts.length === 0 && (
+        <div className="grid-empty">
+          <span className="grid-empty__glyph" aria-hidden="true">✦</span>
+          <p className="mb-0">No posts yet. Be the first to write one.</p>
+        </div>
+      )}
 
       {posts.map((p) => (
-        <article key={p.id} className="card mb-3">
-          <div className="card-body">
-            <div className="d-flex justify-content-between">
-              <h5 className="card-title mb-1">{p.title}</h5>
-              <small className="text-muted">{new Date(p.createdAt).toLocaleString()}</small>
-            </div>
-            <h6 className="card-subtitle mb-2 text-muted">
-              by <Link to={`/users/${p.authorId}`}>{p.authorName}</Link>
-            </h6>
-            <p className="card-text" style={{ whiteSpace: 'pre-wrap' }}>{p.body}</p>
-            <button
-              type="button"
-              className="btn btn-link btn-sm px-0"
-              onClick={() => setExpanded(expanded === p.id ? null : p.id)}
-            >
-              {expanded === p.id ? 'Hide' : 'Show'} comments ({p.commentCount})
-            </button>
-            {expanded === p.id && <CommentList postId={p.id} />}
+        <article key={p.id} className="deck-card post-card">
+          <div className="post-head">
+            <h3 className="post-title">{p.title}</h3>
+            <span className="post-time">{new Date(p.createdAt).toLocaleString()}</span>
           </div>
+          <div className="post-author">
+            by <Link to={`/users/${p.authorId}`}>{p.authorName}</Link>
+          </div>
+          <p className="post-body">{p.body}</p>
+          <button
+            type="button"
+            className="btn btn-link btn-sm px-0 mt-2"
+            onClick={() => setExpanded(expanded === p.id ? null : p.id)}
+          >
+            {expanded === p.id ? 'Hide' : 'Show'} comments ({p.commentCount})
+          </button>
+          {expanded === p.id && <CommentList postId={p.id} />}
         </article>
       ))}
-    </div>
+    </Container>
   );
 }

@@ -32,6 +32,7 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final GoogleTokenVerifier googleTokenVerifier;
     private final long refreshExpirationMs;
 
     public AuthController(AuthenticationManager authenticationManager,
@@ -39,12 +40,14 @@ public class AuthController {
                           PasswordEncoder passwordEncoder,
                           JwtService jwtService,
                           RefreshTokenRepository refreshTokenRepository,
+                          GoogleTokenVerifier googleTokenVerifier,
                           @Value("${security.jwt.refresh-expiration-ms:604800000}") long refreshExpirationMs) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.refreshTokenRepository = refreshTokenRepository;
+        this.googleTokenVerifier = googleTokenVerifier;
         this.refreshExpirationMs = refreshExpirationMs;
     }
 
@@ -85,6 +88,39 @@ public class AuthController {
         String refreshToken = createRefreshToken(user.getId());
 
         audit.info("LOGIN_OK userId={} ip={}", user.getId(), clientIp(httpRequest));
+        return ResponseEntity.ok(AuthResponse.from(principal, token, refreshToken, user.getDisplayName()));
+    }
+
+    @PostMapping("/google")
+    public ResponseEntity<AuthResponse> google(@Valid @RequestBody GoogleAuthRequest request,
+                                               HttpServletRequest httpRequest) {
+        GoogleTokenVerifier.GoogleUser googleUser = googleTokenVerifier.verify(request.idToken());
+        if (googleUser == null) {
+            audit.warn("LOGIN_FAILED provider=GOOGLE ip={} reason=InvalidIdToken", clientIp(httpRequest));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        // Link by email: existing local/Google accounts log in; new emails are provisioned.
+        UserEntity user = userRepository.findByEmailIgnoreCase(googleUser.email())
+            .orElseGet(() -> {
+                UserEntity created = new UserEntity();
+                created.setEmail(googleUser.email());
+                created.setDisplayName(
+                    googleUser.name() != null && !googleUser.name().isBlank()
+                        ? googleUser.name()
+                        : googleUser.email());
+                created.setProvider("GOOGLE");
+                created.setProviderId(googleUser.subject());
+                // No usable password for Google accounts: store a random unguessable hash.
+                created.setPasswordHash(passwordEncoder.encode(UUID.randomUUID().toString()));
+                return userRepository.save(created);
+            });
+
+        UserPrincipal principal = new UserPrincipal(user);
+        String token = jwtService.generateToken(principal);
+        String refreshToken = createRefreshToken(user.getId());
+
+        audit.info("LOGIN_OK provider=GOOGLE userId={} ip={}", user.getId(), clientIp(httpRequest));
         return ResponseEntity.ok(AuthResponse.from(principal, token, refreshToken, user.getDisplayName()));
     }
 

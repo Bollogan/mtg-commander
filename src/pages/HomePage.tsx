@@ -2,9 +2,26 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Container, Pagination } from 'react-bootstrap';
+import { motion, type Variants } from 'framer-motion';
 import { SearchBar } from '../components/SearchBar';
 import { CardGrid } from '../components/CardGrid';
+import { AdSlot } from '../components/AdSlot';
 import { fetchTopCommanders, searchCards, type SearchResponse, type TopCommander } from '../services/scryfallApi';
+
+// Staggered blur-fade entrance for the hero — each child cascades in with weight.
+const heroStagger: Variants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.08, delayChildren: 0.04 } },
+};
+const heroItem: Variants = {
+  hidden: { opacity: 0, y: 18, filter: 'blur(6px)' },
+  show: {
+    opacity: 1,
+    y: 0,
+    filter: 'blur(0px)',
+    transition: { duration: 0.7, ease: [0.2, 0.8, 0.2, 1] },
+  },
+};
 
 export const HomePage = () => {
   const { t } = useTranslation();
@@ -81,19 +98,31 @@ export const HomePage = () => {
 
   return (
     <Container className="page-container">
-      <div className="app-hero">
-        <span className="eyebrow">✦ Magic: The Gathering</span>
-        <h1>{t('app.title')}</h1>
-        <p>{t('app.subtitle')}</p>
+      <motion.div className="app-hero" variants={heroStagger} initial="hidden" animate="show">
+        <motion.span className="eyebrow" variants={heroItem}>✦ Magic: The Gathering</motion.span>
+        <motion.h1 variants={heroItem}>{t('app.title')}</motion.h1>
+        <motion.p variants={heroItem}>{t('app.subtitle')}</motion.p>
+        <motion.div className="search-hero" variants={heroItem}>
+          <SearchBar onSearch={onSearch} />
+        </motion.div>
+      </motion.div>
+
+      <div className="section-head">
+        <h2 className="section-title mb-0">
+          {showTop ? t('search.topTitle') : t('search.resultsTitle')}
+        </h2>
+        {!showTop && totalCards > 0 && (
+          <span className="section-count tabular-nums">{totalCards.toLocaleString()}</span>
+        )}
       </div>
-      <SearchBar onSearch={onSearch} />
-      <h2 className="section-title">
-        {showTop ? t('search.topTitle') : t('search.resultsTitle')}
-      </h2>
       <CardGrid
         cards={cardsToShow}
         loading={showTop ? loadingTop : searching}
       />
+
+      {/* Optional ad slot — only renders when VITE_ADSENSE_CLIENT + slot are configured. */}
+      <AdSlot slot={import.meta.env.VITE_ADSENSE_SLOT_HOME} className="my-4" />
+
       {!showTop && totalPages > 1 && (
         <div className="d-flex justify-content-center mt-4">
           <Pagination className="mb-0 app-pagination">

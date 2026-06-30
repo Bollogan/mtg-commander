@@ -41,7 +41,7 @@ const DeckDropZone = () => {
     <Card
       ref={dropRef as unknown as React.Ref<HTMLDivElement>}
       className="deck-card"
-      style={{ outline: isOver ? '2px dashed #7c83ff' : 'none' }}
+      style={{ outline: isOver ? '2px dashed var(--accent)' : 'none' }}
     >
       <Card.Body>
         <Stack direction="horizontal" gap={2} className="mb-3">

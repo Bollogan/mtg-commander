@@ -16,11 +16,24 @@ export const CardGrid = ({ cards, loading = false, emptyMessage }: CardGridProps
   const { t } = useTranslation();
 
   if (loading) {
-    return <p className="text-center text-muted mt-4">{t('search.loading')}</p>;
+    return (
+      <Row className="g-4 mt-2" aria-busy="true" aria-label={t('search.loading')}>
+        {Array.from({ length: 8 }).map((_, i) => (
+          <Col key={i} xs={12} sm={6} md={4} lg={3}>
+            <div className="card-skeleton" />
+          </Col>
+        ))}
+      </Row>
+    );
   }
 
   if (!cards.length) {
-    return <p className="text-center text-muted mt-4">{emptyMessage || t('search.empty')}</p>;
+    return (
+      <div className="grid-empty">
+        <span className="grid-empty__glyph" aria-hidden="true">✦</span>
+        <p className="mb-0">{emptyMessage || t('search.empty')}</p>
+      </div>
+    );
   }
 
   return (

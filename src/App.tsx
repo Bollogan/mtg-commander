@@ -7,10 +7,13 @@ import { GameSimulatorPage } from './pages/GameSimulatorPage';
 import { EventsPage } from './pages/EventsPage';
 import { AccountPage } from './pages/AccountPage';
 import { CardDetailPage } from './pages/CardDetailPage';
+import { NotFoundPage } from './pages/NotFoundPage';
 import { ProfilePage } from './components/social/ProfilePage';
 import { ForumsPage } from './components/social/ForumsPage';
 import { ForumThread } from './components/social/ForumThread';
-import { AuthPage } from './components/social/AuthPage';
+import { LoginPage } from './pages/LoginPage';
+import { RegisterPage } from './pages/RegisterPage';
+import { RequireAuth } from './components/RequireAuth';
 import { useNotificationStream } from './features/notifications/useNotificationStream';
 import './App.css';
 
@@ -25,17 +28,19 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/decks" element={<DecksPage />} />
-          <Route path="/decks/build" element={<DeckBuilderPage />} />
-          <Route path="/decks/build/:id" element={<DeckBuilderPage />} />
-          <Route path="/play" element={<GameSimulatorPage />} />
-          <Route path="/play/:roomId" element={<GameSimulatorPage />} />
+          <Route path="/decks/build" element={<RequireAuth><DeckBuilderPage /></RequireAuth>} />
+          <Route path="/decks/build/:id" element={<RequireAuth><DeckBuilderPage /></RequireAuth>} />
+          <Route path="/play" element={<RequireAuth><GameSimulatorPage /></RequireAuth>} />
+          <Route path="/play/:roomId" element={<RequireAuth><GameSimulatorPage /></RequireAuth>} />
           <Route path="/events" element={<EventsPage />} />
-          <Route path="/account" element={<AccountPage />} />
+          <Route path="/account" element={<RequireAuth><AccountPage /></RequireAuth>} />
           <Route path="/card/:id" element={<CardDetailPage />} />
-          <Route path="/login" element={<AuthPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
           <Route path="/users/:id" element={<ProfilePage />} />
           <Route path="/forums" element={<ForumsPage />} />
           <Route path="/forums/:id" element={<ForumThread />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </div>
     </BrowserRouter>

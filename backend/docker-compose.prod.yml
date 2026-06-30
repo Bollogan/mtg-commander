@@ -179,16 +179,21 @@ services:
       eureka-server: { condition: service_healthy }
     networks: [mtg-net]
 
-  # ─── Frontend: the only other host-exposed port ──────────────────────────────
+  # ─── Frontend: single-origin entry point (nginx serves SPA + proxies /api & /ws) ──────
+  # This is the ONLY port you need to expose/tunnel. Empty VITE_API_BASE = same-origin, so the
+  # browser only ever talks to whatever host it loaded from (LAN IP, Cloudflare, …) — no CORS.
   frontend:
     <<: *prod-profile
     build:
       context: ..
       dockerfile: Dockerfile.frontend
+      args:
+        VITE_API_BASE: ""
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
+        VITE_ADSENSE_CLIENT: ${VITE_ADSENSE_CLIENT:-}
+        VITE_ADSENSE_SLOT_HOME: ${VITE_ADSENSE_SLOT_HOME:-}
     ports:
       - "80:80"
-    environment:
-      VITE_API_BASE: ${PUBLIC_API_BASE:-http://localhost:8080}
     depends_on:
       api-gateway: { condition: service_started }
     networks: [mtg-net]

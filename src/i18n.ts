@@ -5,7 +5,7 @@ const resources = {
   en: {
     translation: {
       app: {
-        title: 'MTG Deck Builder',
+        title: 'Planeswalkers Tower',
         subtitle: 'Build smarter. Play sharper.'
       },
       nav: {
@@ -48,7 +48,7 @@ const resources = {
   es: {
     translation: {
       app: {
-        title: 'MTG Deck Builder',
+        title: 'Planeswalkers Tower',
         subtitle: 'Construye mejor. Juega con ventaja.'
       },
       nav: {

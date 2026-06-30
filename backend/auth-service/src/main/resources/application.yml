@@ -31,6 +31,11 @@ security:
     expiration-ms: 86400000
     refresh-expiration-ms: 604800000
 
+# Google Sign-In: set GOOGLE_CLIENT_ID to your OAuth 2.0 Web client id to enable
+# the POST /api/auth/google endpoint. Leave blank to keep the feature disabled.
+google:
+  client-id: ${GOOGLE_CLIENT_ID:}
+
 management:
   endpoints:
     web:

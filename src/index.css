@@ -1,36 +1,41 @@
 /* ============================================================================
    Design tokens — single source of truth for the visual language.
-   Modern, clean dark theme aligned with contemporary deck-building apps.
+   "Arcane obsidian" — warm dark surfaces, a single aged-gold accent, editorial
+   serif display paired with a clean grotesque sans. Built for a card game.
    ========================================================================== */
 :root {
-  /* Surfaces (low → high elevation) */
-  --bg-base: #0c0d15;
-  --bg-elev-1: #14162a;
-  --bg-elev-2: #1b1e36;
-  --bg-elev-3: #242848;
+  /* Surfaces (low → high elevation) — one warm-gray family, slightly tinted */
+  --bg-base: #100f0c;
+  --bg-elev-1: #1a1813;
+  --bg-elev-2: #22201a;
+  --bg-elev-3: #2d2a21;
 
-  /* Hairlines */
-  --border: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.16);
+  /* Hairlines — warm white, low alpha */
+  --border: rgba(240, 230, 208, 0.09);
+  --border-strong: rgba(240, 230, 208, 0.18);
 
-  /* Text */
-  --text: #e8eaf4;
-  --text-muted: #9aa1bd;
-  --text-faint: #6f7596;
+  /* Text — warm off-white, single hue */
+  --text: #f1ece0;
+  --text-muted: #ada592;
+  --text-faint: #7f7866;
 
-  /* Brand / accents */
-  --accent: #7c83ff;
-  --accent-rgb: 124, 131, 255;
-  --accent-strong: #6b72f5;
-  --accent-2: #46d6e6;
-  --accent-grad: linear-gradient(135deg, #7c83ff 0%, #46d6e6 100%);
-  --accent-glow: 0 0 0 1px rgba(var(--accent-rgb), 0.5), 0 8px 30px rgba(var(--accent-rgb), 0.28);
+  /* Brand / accent — ONE considered colour: aged gold (sat < 70%) */
+  --accent: #d8a24a;
+  --accent-rgb: 216, 162, 74;
+  --accent-strong: #c2872f;
+  --accent-soft: #e7bd6a;
+  /* Legacy alias kept so older rules keep working — same hue, lighter */
+  --accent-2: #e7bd6a;
+  --accent-grad: linear-gradient(135deg, #ecc472 0%, #c2872f 100%);
+  --accent-glow: 0 0 0 1px rgba(var(--accent-rgb), 0.45), 0 10px 32px rgba(var(--accent-rgb), 0.22);
 
-  /* State colors */
-  --success: #34d399;
-  --warning: #f5c451;
-  --danger: #f0676b;
-  --info: #46d6e6;
+  /* State colours — tuned to sit in the warm palette */
+  --success: #84ab5f;
+  --success-rgb: 132, 171, 95;
+  --warning: #e0a84e;
+  --danger: #d4685c;
+  --danger-rgb: 212, 104, 92;
+  --info: #c9a25a;
 
   /* Radii */
   --radius-sm: 0.5rem;
@@ -39,18 +44,19 @@
   --radius-xl: 1.375rem;
   --radius-pill: 999px;
 
-  /* Shadows */
-  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-2: 0 10px 28px rgba(0, 0, 0, 0.4);
-  --shadow-3: 0 24px 60px rgba(0, 0, 0, 0.55);
+  /* Shadows — warm-tinted, single light source from top */
+  --shadow-1: 0 1px 2px rgba(8, 6, 2, 0.45);
+  --shadow-2: 0 12px 30px rgba(8, 6, 2, 0.5);
+  --shadow-3: 0 26px 64px rgba(6, 4, 1, 0.62);
 
   /* Motion */
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --dur: 0.18s;
 
-  /* Typography */
-  --font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-  --font-display: 'Sora', 'Inter', system-ui, sans-serif;
+  /* Typography — editorial serif display + clean grotesque body */
+  --font-sans: 'Outfit', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-display: 'Fraunces', 'Outfit', Georgia, serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
 
   color-scheme: dark;
 }
@@ -59,7 +65,7 @@
 [data-bs-theme='dark'] {
   --bs-body-bg: var(--bg-base);
   --bs-body-color: var(--text);
-  --bs-emphasis-color: #ffffff;
+  --bs-emphasis-color: #fff7e8;
   --bs-secondary-color: var(--text-muted);
   --bs-tertiary-color: var(--text-faint);
   --bs-secondary-bg: var(--bg-elev-2);
@@ -69,9 +75,9 @@
 
   --bs-primary: var(--accent);
   --bs-primary-rgb: var(--accent-rgb);
-  --bs-link-color: #aab0ff;
-  --bs-link-color-rgb: 170, 176, 255;
-  --bs-link-hover-color: #c6caff;
+  --bs-link-color: var(--accent-soft);
+  --bs-link-color-rgb: 231, 189, 106;
+  --bs-link-hover-color: #f4d488;
 
   --bs-border-radius: var(--radius);
   --bs-border-radius-sm: var(--radius-sm);
@@ -92,22 +98,47 @@ html {
 
 body {
   margin: 0;
-  min-height: 100vh;
+  min-height: 100dvh;
   background-color: var(--bg-base);
   color: var(--text);
   font-family: var(--font-sans);
-  font-feature-settings: 'cv02', 'cv03', 'cv04', 'ss01';
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
 #root {
-  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Subtle film-grain overlay to break digital flatness (sits above the bg, below UI) */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.4;
+  mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.app-shell {
+  position: relative;
+  z-index: 1;
 }
 
 h1, h2, h3, .h1, .h2, .h3 {
   font-family: var(--font-display);
+  font-weight: 600;
   letter-spacing: -0.02em;
+  font-optical-sizing: auto;
+}
+
+/* Data / numerals read better with tabular figures */
+.tabular-nums,
+.badge,
+.price-value,
+.deck-count {
+  font-variant-numeric: tabular-nums;
 }
 
 /* Accessible focus ring across the whole app */
@@ -118,8 +149,8 @@ h1, h2, h3, .h1, .h2, .h3 {
 }
 
 ::selection {
-  background: rgba(var(--accent-rgb), 0.3);
-  color: #fff;
+  background: rgba(var(--accent-rgb), 0.32);
+  color: #1a1813;
 }
 
 /* Refined scrollbars */
@@ -138,7 +169,7 @@ h1, h2, h3, .h1, .h2, .h3 {
   background-clip: content-box;
 }
 *::-webkit-scrollbar-thumb:hover {
-  background: #2e335c;
+  background: #3a3528;
   background-clip: content-box;
 }
 

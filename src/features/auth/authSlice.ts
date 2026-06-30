@@ -62,6 +62,14 @@ export const register = createAsyncThunk(
   },
 );
 
+export const googleLogin = createAsyncThunk(
+  'auth/google',
+  async (idToken: string) => {
+    const { data } = await apiClient.post<AuthResponse>('/api/auth/google', { idToken });
+    return data;
+  },
+);
+
 const authSlice = createSlice({
   name: 'auth',
   initialState,
@@ -96,7 +104,10 @@ const authSlice = createSlice({
       .addCase(login.rejected, (s, a) => { s.status = 'failed'; s.error = a.error.message ?? 'Login failed'; })
       .addCase(register.pending, (s) => { s.status = 'loading'; s.error = null; })
       .addCase(register.fulfilled, (s, a) => applyAuth(s, a.payload))
-      .addCase(register.rejected, (s, a) => { s.status = 'failed'; s.error = a.error.message ?? 'Registration failed'; });
+      .addCase(register.rejected, (s, a) => { s.status = 'failed'; s.error = a.error.message ?? 'Registration failed'; })
+      .addCase(googleLogin.pending, (s) => { s.status = 'loading'; s.error = null; })
+      .addCase(googleLogin.fulfilled, (s, a) => applyAuth(s, a.payload))
+      .addCase(googleLogin.rejected, (s, a) => { s.status = 'failed'; s.error = a.error.message ?? 'Google sign-in failed'; });
   },
 });
 

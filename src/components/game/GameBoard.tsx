@@ -69,8 +69,8 @@ export const GameBoard = ({ player, isActive, onPlayCard, onTapCard }: BoardProp
             minHeight: 70,
             borderRadius: 6,
             padding: 8,
-            background: isOver ? 'rgba(124,131,255,0.12)' : 'rgba(255,255,255,0.03)',
-            outline: isOver ? '2px dashed #7c83ff' : '1px dashed rgba(255,255,255,0.14)',
+            background: isOver ? 'rgba(216,162,74,0.12)' : 'rgba(255,255,255,0.03)',
+            outline: isOver ? '2px dashed var(--accent)' : '1px dashed rgba(255,255,255,0.14)',
           }}
         >
           <strong className="small text-muted">Battlefield ({player.battlefield.length})</strong>
