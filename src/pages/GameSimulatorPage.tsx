@@ -61,7 +61,7 @@ export const GameSimulatorPage = () => {
   const myPlayerId = useAppSelector((s) => s.auth.userId);
   const connRef = useRef<GameConnection | null>(null);
 
-  // Join the room (REST), restore state, then open the STOMP stream.
+  // Join the room (REST), restore state, then open the socket.io stream.
   useEffect(() => {
     if (!roomId) return;
     let active = true;

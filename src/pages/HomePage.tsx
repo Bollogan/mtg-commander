@@ -1,143 +1,134 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { lazy, Suspense, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Container, Pagination } from 'react-bootstrap';
-import { motion, type Variants } from 'framer-motion';
-import { SearchBar } from '../components/SearchBar';
-import { CardGrid } from '../components/CardGrid';
-import { AdSlot } from '../components/AdSlot';
-import { fetchTopCommanders, searchCards, type SearchResponse, type TopCommander } from '../services/scryfallApi';
+import { useQuery } from '@tanstack/react-query';
+import { motion, useReducedMotion, useScroll, useTransform } from 'framer-motion';
+import { fetchTopCommanders, type TopCommander } from '../services/scryfallApi';
 
-// Staggered blur-fade entrance for the hero — each child cascades in with weight.
-const heroStagger: Variants = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.08, delayChildren: 0.04 } },
-};
-const heroItem: Variants = {
-  hidden: { opacity: 0, y: 18, filter: 'blur(6px)' },
-  show: {
-    opacity: 1,
-    y: 0,
-    filter: 'blur(0px)',
-    transition: { duration: 0.7, ease: [0.2, 0.8, 0.2, 1] },
-  },
-};
+// three.js is ~286 KB gzip — only the landing needs it, so load it on demand.
+const CardScene = lazy(() =>
+  import('../components/landing/CardScene').then((m) => ({ default: m.CardScene })),
+);
+
+interface Feature {
+  glyph: string;
+  titleKey: string;
+  bodyKey: string;
+  to: string;
+  ctaKey: string;
+}
+
+const FEATURES: Feature[] = [
+  { glyph: '⌕', titleKey: 'landing.f1Title', bodyKey: 'landing.f1Body', to: '/search', ctaKey: 'landing.f1Cta' },
+  { glyph: '♛', titleKey: 'landing.f2Title', bodyKey: 'landing.f2Body', to: '/commanders', ctaKey: 'landing.f2Cta' },
+  { glyph: '⛭', titleKey: 'landing.f3Title', bodyKey: 'landing.f3Body', to: '/decks/build', ctaKey: 'landing.f3Cta' },
+  { glyph: '⚔', titleKey: 'landing.f4Title', bodyKey: 'landing.f4Body', to: '/play', ctaKey: 'landing.f4Cta' },
+];
 
 export const HomePage = () => {
   const { t } = useTranslation();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [page, setPage] = useState(1);
+  const reduce = useReducedMotion();
+  const heroRef = useRef<HTMLElement>(null);
 
-  const onSearch = useCallback((term: string) => {
-    setSearchTerm(term.trim());
-  }, []);
-
-  useEffect(() => {
-    setPage(1);
-  }, [searchTerm]);
-
-  const { data: searchResponse, isLoading: searching } = useQuery<SearchResponse>({
-    queryKey: ['cards', searchTerm, page],
-    queryFn: () => searchCards(searchTerm, page),
-    enabled: searchTerm.length >= 2,
-    placeholderData: keepPreviousData,
-    staleTime: 1000 * 60 * 3
-  });
-
-  const { data: topCommanders = [], isLoading: loadingTop } = useQuery<TopCommander[]>({
+  // A few real commanders power the 3D card textures behind the page (falls back to the
+  // Scryfall image endpoint by id if a card has no image_uris).
+  const { data: topCommanders = [] } = useQuery<TopCommander[]>({
     queryKey: ['topCommanders'],
-    queryFn: () => fetchTopCommanders(20),
-    staleTime: 1000 * 60 * 60
+    queryFn: () => fetchTopCommanders(8),
+    staleTime: 1000 * 60 * 60,
   });
+  const cardImages = topCommanders
+    .map((tc) => tc.card.image_uris?.normal
+      ?? (tc.card.id ? `https://api.scryfall.com/cards/${tc.card.id}?format=image&version=normal` : ''))
+    .filter(Boolean)
+    .slice(0, 5);
 
-  const showTop = searchTerm.length < 2;
-  const cardsToShow = useMemo(() => {
-    if (!showTop) {
-      return searchResponse?.cards ?? [];
-    }
-    return topCommanders.map(item => ({
-      ...item.card,
-      deckCount: item.deckCount
-    }));
-  }, [showTop, topCommanders, searchResponse]);
-
-  const totalCards = searchResponse?.totalCards ?? 0;
-  const pageSize = searchResponse?.pageSize ?? 20;
-  const totalPages = totalCards > 0 ? Math.ceil(totalCards / pageSize) : 0;
-
-  const paginationItems = useMemo(() => {
-    if (totalPages <= 1) {
-      return [] as ReactNode[];
-    }
-
-    const pages = new Set<number>([1, totalPages, page, page - 1, page + 1]);
-    const sorted = Array.from(pages)
-      .filter(value => value >= 1 && value <= totalPages)
-      .sort((a, b) => a - b);
-
-    const items: ReactNode[] = [];
-    let last = 0;
-    sorted.forEach(value => {
-      if (last && value - last > 1) {
-        items.push(<Pagination.Ellipsis key={`ellipsis-${last}-${value}`} disabled />);
-      }
-      items.push(
-        <Pagination.Item
-          key={value}
-          active={value === page}
-          onClick={() => setPage(value)}
-        >
-          {value}
-        </Pagination.Item>
-      );
-      last = value;
-    });
-
-    return items;
-  }, [page, totalPages]);
+  // Parallax: the ambient glow + hero content drift at different rates as you scroll away.
+  const { scrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ['start start', 'end start'],
+  });
+  const glowY = useTransform(scrollYProgress, [0, 1], ['0%', reduce ? '0%' : '40%']);
+  const contentY = useTransform(scrollYProgress, [0, 1], ['0%', reduce ? '0%' : '-18%']);
+  const contentFade = useTransform(scrollYProgress, [0, 0.8], [1, reduce ? 1 : 0]);
 
   return (
-    <Container className="page-container">
-      <motion.div className="app-hero" variants={heroStagger} initial="hidden" animate="show">
-        <motion.span className="eyebrow" variants={heroItem}>✦ Magic: The Gathering</motion.span>
-        <motion.h1 variants={heroItem}>{t('app.title')}</motion.h1>
-        <motion.p variants={heroItem}>{t('app.subtitle')}</motion.p>
-        <motion.div className="search-hero" variants={heroItem}>
-          <SearchBar onSearch={onSearch} />
+    <main className="landing">
+      {/* Fixed 3D card layer behind the whole landing (non-interactive, loaded on demand). */}
+      <Suspense fallback={null}>
+        <CardScene images={cardImages} />
+      </Suspense>
+
+      {/* ── Hero ─────────────────────────────────────────────────────────────── */}
+      <section className="landing-hero" ref={heroRef}>
+        <motion.div className="landing-hero__glow" style={{ y: glowY }} aria-hidden="true" />
+        <motion.div className="landing-hero__inner" style={{ y: contentY, opacity: contentFade }}>
+          <motion.span
+            className="eyebrow"
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            ✦ {t('app.title')}
+          </motion.span>
+          <motion.h1
+            className="landing-hero__title"
+            initial={{ opacity: 0, y: 22, filter: 'blur(8px)' }}
+            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            transition={{ duration: 0.85, ease: [0.2, 0.8, 0.2, 1], delay: 0.05 }}
+          >
+            {t('landing.heroTitle')}
+          </motion.h1>
+          <motion.p
+            className="landing-hero__lede"
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.18 }}
+          >
+            {t('landing.heroLede')}
+          </motion.p>
+          <motion.div
+            className="landing-hero__cta"
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.3 }}
+          >
+            <Link to="/search" className="btn-hero btn-hero--primary">{t('landing.ctaExplore')}</Link>
+            <Link to="/commanders" className="btn-hero btn-hero--ghost">{t('landing.ctaCommanders')}</Link>
+          </motion.div>
         </motion.div>
-      </motion.div>
-
-      <div className="section-head">
-        <h2 className="section-title mb-0">
-          {showTop ? t('search.topTitle') : t('search.resultsTitle')}
-        </h2>
-        {!showTop && totalCards > 0 && (
-          <span className="section-count tabular-nums">{totalCards.toLocaleString()}</span>
-        )}
-      </div>
-      <CardGrid
-        cards={cardsToShow}
-        loading={showTop ? loadingTop : searching}
-      />
-
-      {/* Optional ad slot — only renders when VITE_ADSENSE_CLIENT + slot are configured. */}
-      <AdSlot slot={import.meta.env.VITE_ADSENSE_SLOT_HOME} className="my-4" />
-
-      {!showTop && totalPages > 1 && (
-        <div className="d-flex justify-content-center mt-4">
-          <Pagination className="mb-0 app-pagination">
-            <Pagination.Prev
-              onClick={() => setPage(prev => Math.max(1, prev - 1))}
-              disabled={page <= 1}
-            />
-            {paginationItems}
-            <Pagination.Next
-              onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
-              disabled={page >= totalPages}
-            />
-          </Pagination>
+        <div className="landing-hero__scroll" aria-hidden="true">
+          <span>{t('landing.scroll')}</span>
+          <span className="landing-hero__scroll-line" />
         </div>
-      )}
-    </Container>
+      </section>
+
+      {/* ── Feature panels (zig-zag, scroll-revealed) ────────────────────────── */}
+      <div className="landing-features">
+        {FEATURES.map((f, i) => (
+          <section key={f.to} className={`feature-row reveal${i % 2 ? ' feature-row--reverse' : ''}`}>
+            <div className="feature-media" aria-hidden="true">
+              <span className="feature-media__glyph">{f.glyph}</span>
+              <span className="feature-media__index tabular-nums">{String(i + 1).padStart(2, '0')}</span>
+            </div>
+            <div className="feature-copy">
+              <h2 className="feature-copy__title">{t(f.titleKey)}</h2>
+              <p className="feature-copy__body">{t(f.bodyKey)}</p>
+              <Link to={f.to} className="feature-copy__link">{t(f.ctaKey)} <span aria-hidden="true">→</span></Link>
+            </div>
+          </section>
+        ))}
+      </div>
+
+      {/* ── Closing call-to-action ───────────────────────────────────────────── */}
+      <section className="landing-final reveal">
+        <h2 className="landing-final__title">{t('landing.finalTitle')}</h2>
+        <p className="landing-final__lede">{t('landing.finalLede')}</p>
+        <div className="landing-hero__cta">
+          <Link to="/register" className="btn-hero btn-hero--primary">{t('landing.ctaJoin')}</Link>
+          <Link to="/decks/build" className="btn-hero btn-hero--ghost">{t('landing.ctaBuild')}</Link>
+        </div>
+      </section>
+    </main>
   );
 };

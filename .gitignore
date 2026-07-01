@@ -7,3 +7,7 @@ dist/
 # Maven build output
 target/
 **/target/
+.firebase/
+.firebaserc
+firebase.json
+nginx/

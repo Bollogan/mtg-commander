@@ -13,6 +13,14 @@ spring:
 # Game state session TTL in Redis (abandoned rooms expire)
 game:
   session-ttl-hours: ${GAME_SESSION_TTL_HOURS:6}
+  # socket.io (netty-socketio) — separate Netty server; the gateway proxies /socket.io/** here.
+  socketio:
+    port: ${GAME_SOCKETIO_PORT:9092}
+
+# Same secret used by the gateway/auth-service to sign JWTs; used to verify the socket.io handshake.
+security:
+  jwt:
+    secret: ${JWT_SECRET:SGVsbG8gV29ybGQgVGhpcyBpcyBhIFNlY3JldCBLZXkgZm9yIEpXVCBFbmNvZGluZw==}
 
 eureka:
   client:

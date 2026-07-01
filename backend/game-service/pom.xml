@@ -13,12 +13,32 @@
 
   <artifactId>game-service</artifactId>
   <name>Game Service</name>
-  <description>WebSocket STOMP game simulator with Redis state (up to 4 players)</description>
+  <description>socket.io game simulator with Redis state (up to 4 players)</description>
 
   <dependencies>
+    <!-- socket.io server (standalone Netty on its own port; see SocketIOConfig) -->
     <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-websocket</artifactId>
+      <groupId>com.corundumstudio.socketio</groupId>
+      <artifactId>netty-socketio</artifactId>
+      <version>2.0.9</version>
+    </dependency>
+    <!-- JWT verification for the socket.io handshake (same secret as gateway/auth) -->
+    <dependency>
+      <groupId>io.jsonwebtoken</groupId>
+      <artifactId>jjwt-api</artifactId>
+      <version>0.12.5</version>
+    </dependency>
+    <dependency>
+      <groupId>io.jsonwebtoken</groupId>
+      <artifactId>jjwt-impl</artifactId>
+      <version>0.12.5</version>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.jsonwebtoken</groupId>
+      <artifactId>jjwt-jackson</artifactId>
+      <version>0.12.5</version>
+      <scope>runtime</scope>
     </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>

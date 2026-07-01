@@ -32,9 +32,9 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         "/api/auth/refresh",
         "/api/auth/google",
         "/actuator",
-        // STOMP WebSocket handshake: auth is handled at room-join (REST) time; the
-        // upgrade request cannot carry the bearer header reliably across browsers.
-        "/ws/game",
+        // socket.io handshake: the game-service verifies the JWT itself on the socket.io
+        // handshake (auth payload), so the gateway must let the ws upgrade through.
+        "/socket.io",
         // Public card catalogue (Scryfall proxy): the landing page browses cards
         // without logging in, so card search/lookup must be reachable anonymously.
         "/api/scryfall"

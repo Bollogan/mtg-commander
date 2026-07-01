@@ -1,65 +1,59 @@
-import { Client, type IMessage } from '@stomp/stompjs';
-import { API_BASE } from '../api/client';
+import { io, type Socket } from 'socket.io-client';
+import { API_BASE, TOKEN_KEY } from '../api/client';
 import type { GameAction, GameState } from '../features/game/gameSlice';
 
-/** Derives the ws:// (or wss://) broker URL from the HTTP API base. */
-const brokerUrl = (): string => {
-  // Relative build (API_BASE === '') → derive from the current origin so wss works behind a tunnel.
-  const httpBase = API_BASE || window.location.origin;
-  return `${httpBase.replace(/^http/, 'ws')}/ws/game`;
+/**
+ * Derives the socket.io {origin, path} from the HTTP API base so it works in every deploy:
+ * - `https://host:7777/mtg-commander` → origin `https://host:7777`, path `/mtg-commander/socket.io`
+ *   (the reverse proxy strips `/mtg-commander`, leaving `/socket.io` for the gateway).
+ * - `http://localhost:11032` (local) → origin `http://localhost:11032`, path `/socket.io`.
+ * - `''` (same-origin nginx build) → current origin, path `/socket.io`.
+ */
+const target = (): { origin: string; path: string } => {
+  const u = new URL(API_BASE || window.location.origin, window.location.origin);
+  const prefix = u.pathname.replace(/\/$/, '');
+  return { origin: u.origin, path: `${prefix}/socket.io` };
 };
 
 export interface GameConnection {
-  client: Client;
+  socket: Socket;
   sendAction: (action: GameAction) => void;
   disconnect: () => void;
 }
 
 /**
- * Opens a STOMP connection (native WebSocket, no SockJS) to the gateway, subscribes to the
- * room topic and invokes {@code onState} on every broadcast. Errors are surfaced via onError.
+ * Opens a socket.io connection (websocket transport only) to the gateway, authenticating with the
+ * JWT in the handshake. Joins the room, then invokes {@code onState} on every broadcast. Errors
+ * (rejected actions, failed handshake) are surfaced via onError.
  */
 export const connectToGame = (
   roomId: string,
   onState: (state: GameState) => void,
   onError?: (message: string) => void,
 ): GameConnection => {
-  const client = new Client({
-    brokerURL: brokerUrl(),
-    reconnectDelay: 3000,
-    onConnect: () => {
-      client.subscribe(`/topic/game/${roomId}`, (message: IMessage) => {
-        try {
-          onState(JSON.parse(message.body) as GameState);
-        } catch {
-          onError?.('Failed to parse game update');
-        }
-      });
-      client.subscribe(`/topic/game/${roomId}/errors`, (message: IMessage) => {
-        try {
-          const err = JSON.parse(message.body) as { message: string };
-          onError?.(err.message);
-        } catch {
-          onError?.('Game action rejected');
-        }
-      });
-    },
-    onStompError: (frame) => onError?.(frame.headers['message'] ?? 'STOMP error'),
-    onWebSocketError: () => onError?.('WebSocket connection error'),
+  const { origin, path } = target();
+
+  const socket = io(origin, {
+    path,
+    transports: ['websocket'],
+    auth: { token: localStorage.getItem(TOKEN_KEY) ?? '' },
+    reconnectionDelay: 3000,
   });
 
-  client.activate();
+  socket.on('connect', () => {
+    socket.emit('join', { roomId });
+  });
+  socket.on('state', (state: GameState) => onState(state));
+  socket.on('error', (err: { message?: string }) => onError?.(err?.message ?? 'Game action rejected'));
+  socket.on('connect_error', (err: Error) => onError?.(err.message || 'WebSocket connection error'));
 
   return {
-    client,
+    socket,
     sendAction: (action: GameAction) => {
-      client.publish({
-        destination: `/app/game/${roomId}/action`,
-        body: JSON.stringify(action),
-      });
+      socket.emit('action', { roomId, action });
     },
     disconnect: () => {
-      void client.deactivate();
+      socket.disconnect();
     },
   };
 };

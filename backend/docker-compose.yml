@@ -86,6 +86,8 @@ services:
       JWT_SECRET: ${JWT_SECRET:-SGVsbG8gV29ybGQgVGhpcyBpcyBhIFNlY3JldCBLZXkgZm9yIEpXVCBFbmNvZGluZw==}
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
+      # socket.io ws upgrade is proxied straight to the game-service netty-socketio port.
+      GAME_SOCKETIO_URI: ws://game-service:9092
     depends_on:
       eureka-server:
         condition: service_healthy
@@ -202,6 +204,9 @@ services:
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:11024/eureka/
+      JWT_SECRET: ${JWT_SECRET:-SGVsbG8gV29ybGQgVGhpcyBpcyBhIFNlY3JldCBLZXkgZm9yIEpXVCBFbmNvZGluZw==}
+      # netty-socketio listens here (internal only; reached by the gateway as game-service:9092).
+      GAME_SOCKETIO_PORT: 9092
     depends_on:
       redis:
         condition: service_healthy
@@ -274,6 +279,10 @@ services:
       args:
         VITE_API_BASE: http://localhost:11032
     container_name: mtg-frontend
+    ports:
+      # Local-testing entry point (VITE_API_BASE points at localhost:11032). Prod frontend
+      # lives on Firebase, so this host port only matters when running the stack locally.
+      - "3000:80"
     depends_on:
       - api-gateway
     networks:

@@ -80,7 +80,7 @@ const gameSlice = createSlice({
   name: 'game',
   initialState,
   reducers: {
-    // Applied on every STOMP broadcast — Redis/game-service is the source of truth.
+    // Applied on every socket.io broadcast — Redis/game-service is the source of truth.
     setGameState(state, action: PayloadAction<GameState>) {
       state.current = action.payload;
     },

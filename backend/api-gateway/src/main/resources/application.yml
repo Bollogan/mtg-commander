@@ -88,16 +88,23 @@ spring:
                 name: deckCircuitBreaker
                 fallbackUri: forward:/fallback
 
-        # Game Service
+        # Game Service (REST room lifecycle)
         - id: game-service
           uri: lb://game-service
           predicates:
-            - Path=/api/game/**,/ws/game/**
+            - Path=/api/game/**
           filters:
             - name: CircuitBreaker
               args:
                 name: gameCircuitBreaker
                 fallbackUri: forward:/fallback
+
+        # Game socket.io — proxied straight to the game-service netty-socketio port (not via
+        # Eureka lb, which resolves the Spring port). No CircuitBreaker: it's a long-lived ws.
+        - id: game-socketio
+          uri: ${GAME_SOCKETIO_URI:ws://game-service:9092}
+          predicates:
+            - Path=/socket.io/**
 
         # AI Service
         - id: ai-service

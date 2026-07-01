@@ -31,8 +31,11 @@ export const TopNav = () => {
         <Navbar.Toggle aria-controls="main-nav" />
         <Navbar.Collapse id="main-nav">
           <Nav className="me-auto">
-            <Nav.Link as={NavLink} to="/" end>
+            <Nav.Link as={NavLink} to="/search">
               {t('nav.search')}
+            </Nav.Link>
+            <Nav.Link as={NavLink} to="/commanders">
+              {t('nav.commanders')}
             </Nav.Link>
             <Nav.Link as={NavLink} to="/decks">
               {t('nav.decks')}
