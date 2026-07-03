@@ -7,5 +7,6 @@ import jakarta.validation.constraints.NotBlank;
 public record CardEntryRequest(
     @NotBlank String scryfallId,
     @Min(1) int qty,
-    String category) {
+    String category,
+    boolean foil) {
 }

@@ -1,5 +1,15 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+import axios from 'axios';
+import i18n from '../../i18n';
 import { apiClient, TOKEN_KEY, REFRESH_KEY } from '../../api/client';
+
+/** Maps an auth request failure to a clear, translated message (instead of axios's raw text). */
+function authErrorMessage(err: unknown, invalidKey: string): string {
+  const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+  if (status === 401 || status === 403) return i18n.t(invalidKey);
+  if (status === 409) return i18n.t('auth.errEmailExists');
+  return i18n.t('auth.errGeneric');
+}
 
 export interface AuthState {
   token: string | null;
@@ -48,17 +58,25 @@ const initialState: AuthState = {
 
 export const login = createAsyncThunk(
   'auth/login',
-  async (creds: { email: string; password: string }) => {
-    const { data } = await apiClient.post<AuthResponse>('/api/auth/login', creds);
-    return data;
+  async (creds: { email: string; password: string }, { rejectWithValue }) => {
+    try {
+      const { data } = await apiClient.post<AuthResponse>('/api/auth/login', creds);
+      return data;
+    } catch (err) {
+      return rejectWithValue(authErrorMessage(err, 'auth.errInvalidCredentials'));
+    }
   },
 );
 
 export const register = createAsyncThunk(
   'auth/register',
-  async (req: { email: string; displayName: string; password: string }) => {
-    const { data } = await apiClient.post<AuthResponse>('/api/auth/register', req);
-    return data;
+  async (req: { email: string; displayName: string; password: string }, { rejectWithValue }) => {
+    try {
+      const { data } = await apiClient.post<AuthResponse>('/api/auth/register', req);
+      return data;
+    } catch (err) {
+      return rejectWithValue(authErrorMessage(err, 'auth.errGeneric'));
+    }
   },
 );
 
@@ -101,10 +119,10 @@ const authSlice = createSlice({
     builder
       .addCase(login.pending, (s) => { s.status = 'loading'; s.error = null; })
       .addCase(login.fulfilled, (s, a) => applyAuth(s, a.payload))
-      .addCase(login.rejected, (s, a) => { s.status = 'failed'; s.error = a.error.message ?? 'Login failed'; })
+      .addCase(login.rejected, (s, a) => { s.status = 'failed'; s.error = (a.payload as string) ?? a.error.message ?? 'Login failed'; })
       .addCase(register.pending, (s) => { s.status = 'loading'; s.error = null; })
       .addCase(register.fulfilled, (s, a) => applyAuth(s, a.payload))
-      .addCase(register.rejected, (s, a) => { s.status = 'failed'; s.error = a.error.message ?? 'Registration failed'; })
+      .addCase(register.rejected, (s, a) => { s.status = 'failed'; s.error = (a.payload as string) ?? a.error.message ?? 'Registration failed'; })
       .addCase(googleLogin.pending, (s) => { s.status = 'loading'; s.error = null; })
       .addCase(googleLogin.fulfilled, (s, a) => applyAuth(s, a.payload))
       .addCase(googleLogin.rejected, (s, a) => { s.status = 'failed'; s.error = a.error.message ?? 'Google sign-in failed'; });

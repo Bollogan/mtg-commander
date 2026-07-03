@@ -4,6 +4,8 @@ import { HomePage } from './pages/HomePage';
 import { CommandersPage } from './pages/CommandersPage';
 import { AdvancedSearchPage } from './pages/AdvancedSearchPage';
 import { DecksPage } from './pages/DecksPage';
+import { DeckNewPage } from './pages/DeckNewPage';
+import { DeckDetailPage } from './pages/DeckDetailPage';
 import { DeckBuilderPage } from './pages/DeckBuilderPage';
 import { GameSimulatorPage } from './pages/GameSimulatorPage';
 import { EventsPage } from './pages/EventsPage';
@@ -32,6 +34,8 @@ function App() {
           <Route path="/search" element={<AdvancedSearchPage />} />
           <Route path="/commanders" element={<CommandersPage />} />
           <Route path="/decks" element={<DecksPage />} />
+          <Route path="/decks/new" element={<RequireAuth><DeckNewPage /></RequireAuth>} />
+          <Route path="/decks/:id" element={<DeckDetailPage />} />
           <Route path="/decks/build" element={<RequireAuth><DeckBuilderPage /></RequireAuth>} />
           <Route path="/decks/build/:id" element={<RequireAuth><DeckBuilderPage /></RequireAuth>} />
           <Route path="/play" element={<RequireAuth><GameSimulatorPage /></RequireAuth>} />

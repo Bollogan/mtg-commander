@@ -13,7 +13,8 @@ const SYMBOL_CENTERS: Record<string, { cx: number; cy: number }> = {
   U: { cx: -370, cy: 50 },
   B: { cx: -265, cy: 50 },
   R: { cx: -160, cy: 50 },
-  G: { cx: -55, cy: 50 }
+  G: { cx: -55, cy: 50 },
+  C: { cx: 50, cy: 50 }
 };
 
 interface ManaCostProps {
@@ -61,6 +62,11 @@ const renderSymbol = (token: string, size: number) => {
     </svg>
   );
 };
+
+/** A single official Magic mana symbol (reuses the sprite). Falls back to a token chip. */
+export const ManaSymbol = ({ token, size = 22 }: { token: string; size?: number }) => (
+  <span className="mana-cost">{renderSymbol(token.toUpperCase(), size)}</span>
+);
 
 export const ManaCost = ({ manaCost, size = 22 }: ManaCostProps) => {
   const tokens = getTokens(manaCost);

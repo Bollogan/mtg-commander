@@ -10,6 +10,14 @@ export interface ScryfallImageUris {
   artCrop: string | null;
 }
 
+export interface ScryfallPrices {
+  usd: number | null;
+  usdFoil: number | null;
+  eur: number | null;
+  eurFoil: number | null;
+  tix: number | null;
+}
+
 export interface ScryfallCard {
   id: string;
   name: string;
@@ -24,6 +32,8 @@ export interface ScryfallCard {
   imageUris: ScryfallImageUris | null;
   setName: string;
   rarity: string;
+  legalities: Record<string, string> | null;
+  prices: ScryfallPrices | null;
 }
 
 export interface KeywordSynergy {
@@ -51,9 +61,36 @@ export interface DeckCard {
   oracleText: string | null;
   imageUrl: string | null;
   category: string | null;
+  // Whether this specific printing is tracked as foil (drives the price used for it).
+  foil: boolean;
+  // Denormalized for instant format validation in the builder (not persisted server-side).
+  rarity: string | null;
+  colorIdentity: string[] | null;
+  legalities: Record<string, string> | null;
+  // Current market prices per copy (from Scryfall), for deck total + per-section pricing.
+  usd: number | null;
+  usdFoil: number | null;
+  eur: number | null;
+  eurFoil: number | null;
 }
 
 export type DeckVisibility = 'PRIVATE' | 'FRIENDS_ONLY' | 'PUBLIC';
+
+export interface DeckCategory {
+  name: string;
+  color: string | null;
+  icon: string | null;
+  order: number;
+}
+
+export interface CategoryTemplate {
+  id: string;
+  name: string;
+  categories: DeckCategory[];
+  global: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface DeckSummary {
   id: string;
@@ -79,9 +116,24 @@ export interface Deck {
   description: string | null;
   commanderName: string | null;
   cards: DeckCard[];
+  categories: DeckCategory[];
   stats: DeckStats;
+  views: number;
+  likes: number;
+  liked: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface DeckPrices {
+  usd: number;
+  usdFoil: number;
+  eur: number;
+  eurFoil: number;
+  tix: number;
+  missingUsd: number;
+  missingEur: number;
+  totalCards: number;
 }
 
 export interface Suggestion {
@@ -92,6 +144,14 @@ export interface Suggestion {
   source: 'ai' | 'mock';
 }
 
+export interface AutocompleteItem {
+  id: string;
+  name: string;
+  manaCost: string | null;
+  typeLine: string | null;
+  imageUrl: string | null;
+}
+
 export interface DeckDraft {
   id: string | null;
   name: string;
@@ -100,16 +160,26 @@ export interface DeckDraft {
   description: string;
   commanderName: string;
   cards: DeckCard[];
+  categories: DeckCategory[];
 }
+
+export type PriceSource = 'usd' | 'eur';
 
 interface DeckState {
   myDecks: DeckSummary[];
   current: Deck | null;
+  prices: DeckPrices | null;
+  priceSource: PriceSource;
+  priceFoil: boolean;
   draft: DeckDraft;
   searchResults: ScryfallCard[];
   searchStatus: 'idle' | 'loading' | 'succeeded' | 'failed';
+  autocompleteResults: AutocompleteItem[];
+  autocompleteStatus: 'idle' | 'loading' | 'succeeded' | 'failed';
   suggestions: Suggestion[];
+  categoryTemplates: CategoryTemplate[];
   status: 'idle' | 'loading' | 'succeeded' | 'failed';
+  saveStatus: 'idle' | 'saving' | 'saved' | 'error';
   error: string | null;
 }
 
@@ -121,16 +191,24 @@ const emptyDraft = (): DeckDraft => ({
   description: '',
   commanderName: '',
   cards: [],
+  categories: [],
 });
 
 const initialState: DeckState = {
   myDecks: [],
   current: null,
+  prices: null,
+  priceSource: 'usd',
+  priceFoil: false,
   draft: emptyDraft(),
   searchResults: [],
   searchStatus: 'idle',
+  autocompleteResults: [],
+  autocompleteStatus: 'idle',
   suggestions: [],
+  categoryTemplates: [],
   status: 'idle',
+  saveStatus: 'idle',
   error: null,
 };
 
@@ -153,10 +231,62 @@ export const searchCards = createAsyncThunk('deck/searchCards', async (query: st
   return data.cards;
 });
 
+export const autocompleteCards = createAsyncThunk(
+  'deck/autocompleteCards',
+  async ({ query, limit = 8, commanderOnly = false }: { query: string; limit?: number; commanderOnly?: boolean }) => {
+    const { data } = await apiClient.get<AutocompleteItem[]>('/api/decks/cards/autocomplete', {
+      params: { q: query, limit, commander: commanderOnly },
+    });
+    return data;
+  },
+);
+
+export const fetchCardById = createAsyncThunk(
+  'deck/fetchCardById',
+  async (scryfallId: string) => {
+    const { data } = await apiClient.get<ScryfallCard>(`/api/decks/cards/${scryfallId}`);
+    return data;
+  },
+);
+
+export const fetchCardByName = createAsyncThunk(
+  'deck/fetchCardByName',
+  async (exactName: string) => {
+    const { data } = await apiClient.get<ScryfallCard>('/api/decks/cards/named', {
+      params: { exact: exactName },
+    });
+    return data;
+  },
+);
+
 export const fetchSuggestions = createAsyncThunk('deck/fetchSuggestions', async (id: string) => {
   const { data } = await apiClient.get<Suggestion[]>(`/api/decks/${id}/suggestions`);
   return data;
 });
+
+export const fetchCategoryTemplates = createAsyncThunk('deck/fetchCategoryTemplates', async () => {
+  const { data } = await apiClient.get<CategoryTemplate[]>('/api/decks/category-templates');
+  return data;
+});
+
+export const createCategoryTemplate = createAsyncThunk(
+  'deck/createCategoryTemplate',
+  async ({ name, categories }: { name: string; categories: DeckCategory[] }) => {
+    const { data } = await apiClient.post<CategoryTemplate>('/api/decks/category-templates', {
+      name,
+      categories,
+    });
+    return data;
+  },
+);
+
+export const deleteCategoryTemplate = createAsyncThunk(
+  'deck/deleteCategoryTemplate',
+  async (id: string) => {
+    await apiClient.delete(`/api/decks/category-templates/${id}`);
+    return id;
+  },
+);
 
 export const saveDraft = createAsyncThunk(
   'deck/saveDraft',
@@ -171,7 +301,9 @@ export const saveDraft = createAsyncThunk(
         scryfallId: c.scryfallId,
         qty: c.qty,
         category: c.category,
+        foil: c.foil,
       })),
+      categories: draft.categories,
     };
     if (draft.id) {
       const { data } = await apiClient.put<Deck>(`/api/decks/${draft.id}`, body);
@@ -187,6 +319,28 @@ export const deleteDeck = createAsyncThunk('deck/deleteDeck', async (id: string)
   return id;
 });
 
+export const likeDeck = createAsyncThunk('deck/likeDeck', async (id: string) => {
+  const { data } = await apiClient.post<Deck>(`/api/decks/${id}/like`);
+  return data;
+});
+
+export const unlikeDeck = createAsyncThunk('deck/unlikeDeck', async (id: string) => {
+  const { data } = await apiClient.delete<Deck>(`/api/decks/${id}/like`);
+  return data;
+});
+
+export const fetchDeckPrices = createAsyncThunk('deck/fetchDeckPrices', async (id: string) => {
+  const { data } = await apiClient.get<DeckPrices>(`/api/decks/${id}/prices`);
+  return data;
+});
+
+export const fetchPrintings = createAsyncThunk('deck/fetchPrintings', async (name: string) => {
+  const { data } = await apiClient.get<ScryfallCard[]>('/api/decks/cards/printings', {
+    params: { name },
+  });
+  return data;
+});
+
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
 const toDeckCard = (c: ScryfallCard): DeckCard => ({
@@ -200,6 +354,14 @@ const toDeckCard = (c: ScryfallCard): DeckCard => ({
   oracleText: c.oracleText,
   imageUrl: c.imageUris?.normal ?? c.imageUris?.small ?? null,
   category: null,
+  foil: false,
+  rarity: c.rarity ?? null,
+  colorIdentity: c.colorIdentity ?? null,
+  legalities: c.legalities ?? null,
+  usd: c.prices?.usd ?? null,
+  usdFoil: c.prices?.usdFoil ?? null,
+  eur: c.prices?.eur ?? null,
+  eurFoil: c.prices?.eurFoil ?? null,
 });
 
 const draftFromDeck = (deck: Deck): DeckDraft => ({
@@ -210,6 +372,7 @@ const draftFromDeck = (deck: Deck): DeckDraft => ({
   description: deck.description ?? '',
   commanderName: deck.commanderName ?? '',
   cards: deck.cards.map((c) => ({ ...c })),
+  categories: deck.categories ?? [],
 });
 
 // ─── Slice ────────────────────────────────────────────────────────────────────
@@ -247,6 +410,81 @@ const deckSlice = createSlice({
     removeCardFromDraft(state, action: PayloadAction<string>) {
       state.draft.cards = state.draft.cards.filter((c) => c.scryfallId !== action.payload);
     },
+    setCardCategory(state, action: PayloadAction<{ scryfallId: string; category: string | null }>) {
+      const card = state.draft.cards.find((c) => c.scryfallId === action.payload.scryfallId);
+      if (card) card.category = action.payload.category;
+    },
+    setCardFoil(state, action: PayloadAction<{ scryfallId: string; foil: boolean }>) {
+      const card = state.draft.cards.find((c) => c.scryfallId === action.payload.scryfallId);
+      if (card) card.foil = action.payload.foil;
+    },
+    // Swaps the tracked printing (a different Scryfall id) while keeping qty/category/foil.
+    setCardPrinting(state, action: PayloadAction<{ scryfallId: string; printing: ScryfallCard }>) {
+      const card = state.draft.cards.find((c) => c.scryfallId === action.payload.scryfallId);
+      if (!card) return;
+      const p = action.payload.printing;
+      // If the target printing is already in the deck, merge quantities instead of colliding on id.
+      const collision = state.draft.cards.find((c) => c.scryfallId === p.id && c !== card);
+      if (collision) {
+        collision.qty += card.qty;
+        state.draft.cards = state.draft.cards.filter((c) => c !== card);
+        return;
+      }
+      card.scryfallId = p.id;
+      card.imageUrl = p.imageUris?.normal ?? p.imageUris?.small ?? null;
+      card.rarity = p.rarity ?? card.rarity;
+      card.usd = p.prices?.usd ?? null;
+      card.usdFoil = p.prices?.usdFoil ?? null;
+      card.eur = p.prices?.eur ?? null;
+      card.eurFoil = p.prices?.eurFoil ?? null;
+    },
+    setCardQty(state, action: PayloadAction<{ scryfallId: string; qty: number }>) {
+      const card = state.draft.cards.find((c) => c.scryfallId === action.payload.scryfallId);
+      if (!card) return;
+      if (action.payload.qty <= 0) {
+        state.draft.cards = state.draft.cards.filter((c) => c.scryfallId !== action.payload.scryfallId);
+      } else {
+        card.qty = action.payload.qty;
+      }
+    },
+    setCategories(state, action: PayloadAction<DeckCategory[]>) {
+      state.draft.categories = action.payload;
+    },
+    addCategory(state, action: PayloadAction<DeckCategory>) {
+      if (!state.draft.categories.find((c) => c.name === action.payload.name)) {
+        state.draft.categories.push(action.payload);
+      }
+    },
+    removeCategory(state, action: PayloadAction<string>) {
+      const name = action.payload;
+      state.draft.categories = state.draft.categories.filter((c) => c.name !== name);
+      state.draft.cards.forEach((c) => {
+        if (c.category === name) c.category = null;
+      });
+    },
+    renameCategory(state, action: PayloadAction<{ oldName: string; newName: string }>) {
+      const { oldName, newName } = action.payload;
+      const cat = state.draft.categories.find((c) => c.name === oldName);
+      if (cat && !state.draft.categories.find((c) => c.name === newName)) {
+        cat.name = newName;
+        state.draft.cards.forEach((c) => {
+          if (c.category === oldName) c.category = newName;
+        });
+      }
+    },
+    clearAutocomplete(state) {
+      state.autocompleteResults = [];
+      state.autocompleteStatus = 'idle';
+    },
+    setPriceSource(state, action: PayloadAction<PriceSource>) {
+      state.priceSource = action.payload;
+    },
+    setPriceFoil(state, action: PayloadAction<boolean>) {
+      state.priceFoil = action.payload;
+    },
+    resetSaveStatus(state) {
+      state.saveStatus = 'idle';
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -276,7 +514,22 @@ const deckSlice = createSlice({
       .addCase(searchCards.rejected, (s) => {
         s.searchStatus = 'failed';
       })
+      .addCase(autocompleteCards.pending, (s) => {
+        s.autocompleteStatus = 'loading';
+      })
+      .addCase(autocompleteCards.fulfilled, (s, a) => {
+        s.autocompleteStatus = 'succeeded';
+        s.autocompleteResults = a.payload;
+      })
+      .addCase(autocompleteCards.rejected, (s) => {
+        s.autocompleteStatus = 'failed';
+        s.autocompleteResults = [];
+      })
+      .addCase(saveDraft.pending, (s) => {
+        s.saveStatus = 'saving';
+      })
       .addCase(saveDraft.fulfilled, (s, a) => {
+        s.saveStatus = 'saved';
         s.current = a.payload;
         s.draft = draftFromDeck(a.payload);
         const idx = s.myDecks.findIndex((d) => d.id === a.payload.id);
@@ -295,12 +548,30 @@ const deckSlice = createSlice({
         if (idx >= 0) s.myDecks[idx] = summary;
         else s.myDecks.unshift(summary);
       })
+      .addCase(saveDraft.rejected, (s, a) => {
+        s.saveStatus = 'error';
+        s.error = a.error.message ?? 'Failed to save deck';
+      })
       .addCase(deleteDeck.fulfilled, (s, a) => {
         s.myDecks = s.myDecks.filter((d) => d.id !== a.payload);
         if (s.current?.id === a.payload) s.current = null;
       })
+      .addCase(likeDeck.fulfilled, (s, a) => { s.current = a.payload; })
+      .addCase(unlikeDeck.fulfilled, (s, a) => { s.current = a.payload; })
+      .addCase(fetchDeckPrices.pending, (s) => { s.prices = null; })
+      .addCase(fetchDeckPrices.fulfilled, (s, a) => { s.prices = a.payload; })
+      .addCase(fetchDeckPrices.rejected, (s) => { s.prices = null; })
       .addCase(fetchSuggestions.fulfilled, (s, a) => {
         s.suggestions = a.payload;
+      })
+      .addCase(fetchCategoryTemplates.fulfilled, (s, a) => {
+        s.categoryTemplates = a.payload;
+      })
+      .addCase(createCategoryTemplate.fulfilled, (s, a) => {
+        s.categoryTemplates.unshift(a.payload);
+      })
+      .addCase(deleteCategoryTemplate.fulfilled, (s, a) => {
+        s.categoryTemplates = s.categoryTemplates.filter((t) => t.id !== a.payload);
       });
   },
 });
@@ -311,6 +582,18 @@ export const {
   addCardToDraft,
   changeQty,
   removeCardFromDraft,
+  setCardCategory,
+  setCardQty,
+  setCardFoil,
+  setCardPrinting,
+  setCategories,
+  addCategory,
+  removeCategory,
+  renameCategory,
+  clearAutocomplete,
+  resetSaveStatus,
+  setPriceSource,
+  setPriceFoil,
 } = deckSlice.actions;
 
 export default deckSlice.reducer;

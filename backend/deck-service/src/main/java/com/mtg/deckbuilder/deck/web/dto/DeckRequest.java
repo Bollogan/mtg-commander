@@ -12,5 +12,6 @@ public record DeckRequest(
     DeckVisibility visibility,
     @Size(max = 2000) String description,
     String commanderName,
-    @Valid List<CardEntryRequest> cards) {
+    @Valid List<CardEntryRequest> cards,
+    @Valid List<DeckCategoryDto> categories) {
 }

@@ -21,6 +21,8 @@ public class DeckCard {
   private String oracleText;
   private String imageUrl;
   private String category;
+  /** Whether this specific printing is tracked as foil (affects the price used for it). */
+  private boolean foil;
 
   public DeckCard() {
   }
@@ -108,5 +110,13 @@ public class DeckCard {
 
   public void setCategory(String category) {
     this.category = category;
+  }
+
+  public boolean isFoil() {
+    return foil;
+  }
+
+  public void setFoil(boolean foil) {
+    this.foil = foil;
   }
 }

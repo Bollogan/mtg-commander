@@ -2,7 +2,10 @@ package com.mtg.deckbuilder.deck.scryfall;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.stereotype.Component;
 
 /** Maps raw Scryfall JSON nodes into the trimmed {@link ScryfallCard}. */
@@ -30,9 +33,50 @@ public class ScryfallCardMapper {
     String setName = textOr(raw, "set_name", textOr(raw, "set", "Unknown Set"));
     String rarity = textOr(raw, "rarity", "unknown");
     ScryfallCard.ImageUris imageUris = mapImageUris(raw, face);
+    Map<String, String> legalities = mapLegalities(raw);
+    ScryfallCard.Prices prices = mapPrices(raw);
 
     return new ScryfallCard(id, name, manaCost, cmc, colors, colorIdentity, typeLine,
-        oracleText, power, toughness, imageUris, setName, rarity);
+        oracleText, power, toughness, imageUris, setName, rarity, legalities, prices);
+  }
+
+  private ScryfallCard.Prices mapPrices(JsonNode raw) {
+    JsonNode node = raw.path("prices");
+    if (!node.isObject()) {
+      return new ScryfallCard.Prices(null, null, null, null, null);
+    }
+    return new ScryfallCard.Prices(
+        parsePrice(node, "usd"),
+        parsePrice(node, "usd_foil"),
+        parsePrice(node, "eur"),
+        parsePrice(node, "eur_foil"),
+        parsePrice(node, "tix"));
+  }
+
+  private Double parsePrice(JsonNode node, String field) {
+    JsonNode value = node.path(field);
+    if (value.isMissingNode() || value.isNull()) {
+      return null;
+    }
+    try {
+      return Double.valueOf(value.asText());
+    } catch (NumberFormatException e) {
+      return null;
+    }
+  }
+
+  private Map<String, String> mapLegalities(JsonNode raw) {
+    JsonNode node = raw.path("legalities");
+    if (!node.isObject()) {
+      return Map.of();
+    }
+    Map<String, String> legalities = new LinkedHashMap<>();
+    Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
+    while (fields.hasNext()) {
+      Map.Entry<String, JsonNode> entry = fields.next();
+      legalities.put(entry.getKey(), entry.getValue().asText());
+    }
+    return legalities;
   }
 
   private ScryfallCard.ImageUris mapImageUris(JsonNode raw, JsonNode face) {

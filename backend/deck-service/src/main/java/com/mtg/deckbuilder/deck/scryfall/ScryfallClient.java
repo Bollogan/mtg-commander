@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 /**
  * Non-blocking Scryfall client (WebClient) with a Redis read-through cache (TTL 24h).
@@ -24,8 +25,13 @@ public class ScryfallClient {
 
   private static final Logger log = LoggerFactory.getLogger(ScryfallClient.class);
   private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
-  private static final String CARD_KEY = "scryfall:card:";
+  // v2: cache entries now also carry Scryfall prices; the bump ignores older price-less entries.
+  private static final String CARD_KEY = "scryfall:card:v2:";
+  private static final String NAME_KEY = "scryfall:named:";
   private static final String SEARCH_KEY = "scryfall:search:";
+  private static final String AUTOCOMPLETE_KEY = "scryfall:autocomplete:";
+  private static final String COMMANDER_AUTOCOMPLETE_KEY = "scryfall:commander-autocomplete:v2:";
+  private static final String PRINTINGS_KEY = "scryfall:printings:v2:";
 
   private final WebClient webClient;
   private final StringRedisTemplate redis;
@@ -73,6 +79,34 @@ public class ScryfallClient {
     }
   }
 
+  /** Resolve a card by its exact name (used for the commander's colour identity), cached in Redis. */
+  public ScryfallCard getCardByName(String name) {
+    if (name == null || name.isBlank()) {
+      return null;
+    }
+    String cacheKey = NAME_KEY + name.trim().toLowerCase();
+    ScryfallCard cached = readCard(cacheKey);
+    if (cached != null) {
+      return cached;
+    }
+    try {
+      JsonNode raw = webClient.get()
+          .uri(uri -> uri.path("/cards/named").queryParam("exact", name).build())
+          .retrieve()
+          .bodyToMono(JsonNode.class)
+          .timeout(REQUEST_TIMEOUT)
+          .block();
+      ScryfallCard card = cardMapper.map(raw);
+      if (card != null) {
+        writeJson(cacheKey, card);
+      }
+      return card;
+    } catch (RuntimeException e) {
+      log.warn("Scryfall getCardByName('{}') failed: {}", name, e.getMessage());
+      return null;
+    }
+  }
+
   /** Resolve a list of card ids, hitting Redis first and batching the misses. */
   public Map<String, ScryfallCard> getCards(List<String> ids) {
     Map<String, ScryfallCard> result = new LinkedHashMap<>();
@@ -97,6 +131,123 @@ public class ScryfallClient {
     return result;
   }
 
+  /**
+   * Autocomplete card names using Scryfall's /cards/autocomplete endpoint.
+   * Resolves the first {@code limit} suggestions to lightweight card objects.
+   * Results are cached per query.
+   */
+  public List<ScryfallAutocompleteItem> autocomplete(String query, int limit) {
+    return autocomplete(query, limit, false);
+  }
+
+  /**
+   * Autocomplete card names, optionally restricted to cards that can legally be a commander:
+   * legendary creatures and planeswalkers whose oracle text says "can be your commander".
+   */
+  public List<ScryfallAutocompleteItem> autocomplete(String query, int limit, boolean commanderOnly) {
+    if (query == null || query.isBlank()) {
+      return List.of();
+    }
+    String trimmed = query.trim().toLowerCase();
+    String cacheKey = (commanderOnly ? COMMANDER_AUTOCOMPLETE_KEY : AUTOCOMPLETE_KEY) + trimmed;
+    List<ScryfallAutocompleteItem> cached = readJsonList(cacheKey, ScryfallAutocompleteItem.class);
+    if (cached != null) {
+      return cached;
+    }
+
+    if (commanderOnly) {
+      List<ScryfallCard> cards = searchCommanders(trimmed, limit);
+      List<ScryfallAutocompleteItem> items = cards.stream()
+          .map(ScryfallAutocompleteItem::from)
+          .filter(java.util.Objects::nonNull)
+          .limit(limit)
+          .toList();
+      writeJson(cacheKey, items);
+      return items;
+    }
+
+    List<String> names = fetchAutocompleteNames(trimmed);
+    int resolvedLimit = Math.max(1, Math.min(limit, names.size()));
+    List<ScryfallAutocompleteItem> items = new ArrayList<>(resolvedLimit);
+    for (int i = 0; i < resolvedLimit; i++) {
+      ScryfallCard card = getCardByName(names.get(i));
+      ScryfallAutocompleteItem item = ScryfallAutocompleteItem.from(card);
+      if (item != null) {
+        items.add(item);
+      }
+    }
+    writeJson(cacheKey, items);
+    return items;
+  }
+
+  private List<ScryfallCard> searchCommanders(String query, int limit) {
+    try {
+      // Scryfall's `is:commander` already covers legendary creatures and the planeswalkers /
+      // cards that can be a commander. Bare words match card names and tolerate partial,
+      // multi-word input far better than an anchored regex (which missed names with commas).
+      String q = "is:commander " + query;
+      JsonNode response = webClient.get()
+          .uri(uri -> uri.path("/cards/search")
+              .queryParam("q", q)
+              .queryParam("unique", "cards")
+              .queryParam("order", "name")
+              .queryParam("page", 1)
+              .build())
+          .retrieve()
+          // Scryfall returns HTTP 404 when a query matches nothing — that's an empty result,
+          // not an error, so swallow it and let the body/object check yield an empty list.
+          .onStatus(status -> status.value() == 404, resp -> Mono.empty())
+          .bodyToMono(JsonNode.class)
+          .timeout(REQUEST_TIMEOUT)
+          .block();
+
+      if (response == null || !"list".equals(response.path("object").asText())) {
+        return List.of();
+      }
+      List<ScryfallCard> cards = new ArrayList<>();
+      for (JsonNode raw : response.path("data")) {
+        ScryfallCard card = cardMapper.map(raw);
+        if (card != null) {
+          cards.add(card);
+        }
+        if (cards.size() >= limit) {
+          break;
+        }
+      }
+      return cards;
+    } catch (RuntimeException e) {
+      log.warn("Scryfall commander autocomplete('{}') failed: {}", query, e.getMessage());
+      return List.of();
+    }
+  }
+
+  private List<String> fetchAutocompleteNames(String query) {
+    try {
+      JsonNode response = webClient.get()
+          .uri(uri -> uri.path("/cards/autocomplete")
+              .queryParam("q", query)
+              .build())
+          .retrieve()
+          .bodyToMono(JsonNode.class)
+          .timeout(REQUEST_TIMEOUT)
+          .block();
+
+      if (response == null || !"catalog".equals(response.path("object").asText())) {
+        return List.of();
+      }
+      List<String> names = new ArrayList<>();
+      for (JsonNode node : response.path("data")) {
+        if (node.isTextual()) {
+          names.add(node.asText());
+        }
+      }
+      return names;
+    } catch (RuntimeException e) {
+      log.warn("Scryfall autocomplete('{}') failed: {}", query, e.getMessage());
+      return List.of();
+    }
+  }
+
   /** Search cards, cached per (query, page). */
   public ScryfallSearchResult search(String query, int page) {
     if (query == null || query.isBlank()) {
@@ -117,6 +268,8 @@ public class ScryfallClient {
               .queryParam("page", safePage)
               .build())
           .retrieve()
+          // A no-match search returns HTTP 404 from Scryfall; treat it as an empty result.
+          .onStatus(status -> status.value() == 404, resp -> Mono.empty())
           .bodyToMono(JsonNode.class)
           .timeout(REQUEST_TIMEOUT)
           .block();
@@ -140,6 +293,51 @@ public class ScryfallClient {
     } catch (RuntimeException e) {
       log.warn("Scryfall search('{}') failed: {}", query, e.getMessage());
       return ScryfallSearchResult.empty();
+    }
+  }
+
+  /**
+   * All printings of a card, identified by its exact name, newest first. Cached per name.
+   * Used by the deck builder's "change printing" picker. Each printing carries its own id,
+   * set name, image and prices so the UI can swap the tracked printing.
+   */
+  public List<ScryfallCard> getPrintings(String name) {
+    if (name == null || name.isBlank()) {
+      return List.of();
+    }
+    String cacheKey = PRINTINGS_KEY + name.trim().toLowerCase();
+    List<ScryfallCard> cached = readJsonList(cacheKey, ScryfallCard.class);
+    if (cached != null) {
+      return cached;
+    }
+    try {
+      JsonNode response = webClient.get()
+          .uri(uri -> uri.path("/cards/search")
+              .queryParam("q", "!\"" + name + "\"")
+              .queryParam("unique", "prints")
+              .queryParam("order", "released")
+              .build())
+          .retrieve()
+          // No printings (unknown name) → Scryfall returns 404; treat as empty.
+          .onStatus(status -> status.value() == 404, resp -> Mono.empty())
+          .bodyToMono(JsonNode.class)
+          .timeout(REQUEST_TIMEOUT)
+          .block();
+      if (response == null || !"list".equals(response.path("object").asText())) {
+        return List.of();
+      }
+      List<ScryfallCard> cards = new ArrayList<>();
+      for (JsonNode raw : response.path("data")) {
+        ScryfallCard card = cardMapper.map(raw);
+        if (card != null) {
+          cards.add(card);
+        }
+      }
+      writeJson(cacheKey, cards);
+      return cards;
+    } catch (RuntimeException e) {
+      log.warn("Scryfall getPrintings('{}') failed: {}", name, e.getMessage());
+      return List.of();
     }
   }
 
@@ -182,6 +380,26 @@ public class ScryfallClient {
     try {
       String json = redis.opsForValue().get(key);
       return json == null ? null : objectMapper.readValue(json, type);
+    } catch (Exception e) {
+      log.debug("Cache read miss/error for {}: {}", key, e.getMessage());
+      return null;
+    }
+  }
+
+  /**
+   * Reads a cached JSON array into a properly-typed {@code List<T>}. Deserializing into the
+   * concrete element type (rather than {@code List.class}) is essential: otherwise the elements
+   * come back as generic maps and Spring fails to serialize the response as the declared record
+   * type ("object is not an instance of declaring class").
+   */
+  private <T> List<T> readJsonList(String key, Class<T> elementType) {
+    try {
+      String json = redis.opsForValue().get(key);
+      if (json == null) {
+        return null;
+      }
+      return objectMapper.readValue(json,
+          objectMapper.getTypeFactory().constructCollectionType(List.class, elementType));
     } catch (Exception e) {
       log.debug("Cache read miss/error for {}: {}", key, e.getMessage());
       return null;

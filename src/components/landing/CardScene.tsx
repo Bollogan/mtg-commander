@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 
@@ -61,20 +61,34 @@ const faceGeometry = (() => {
 })();
 
 interface CardLayout {
-  position: [number, number, number];
+  fx: number; // horizontal position as a fraction of the visible half-width (-1 … 1)
+  y: number; // vertical world position (half-height is ~constant across devices)
+  z: number;
   spin: number;
   scrollTurns: number;
   drift: number;
   phase: number;
 }
 
-// Scattered toward the sides so the hero copy in the middle stays readable.
+// fx keeps every card inside the frame on any aspect ratio: on wide screens they fan out to the
+// sides, on a phone they pull toward the centre but all stay visible (some lower → seen on scroll).
 const LAYOUTS: CardLayout[] = [
-  { position: [-2.75, 0.7, 0], spin: 0.22, scrollTurns: 1.1, drift: 3.2, phase: 0 },
-  { position: [2.85, -0.2, -1], spin: -0.3, scrollTurns: -1.4, drift: 4.1, phase: 1.6 },
-  { position: [-2.35, -1.9, -0.6], spin: 0.27, scrollTurns: 1.7, drift: 5.0, phase: 3.1 },
-  { position: [2.5, 1.7, -1.6], spin: -0.19, scrollTurns: 1.2, drift: 3.6, phase: 4.4 },
-  { position: [0.3, -2.6, -2.4], spin: 0.16, scrollTurns: -0.9, drift: 6.2, phase: 5.7 },
+  { fx: -0.92, y: 0.7, z: 0, spin: 0.22, scrollTurns: 1.1, drift: 3.2, phase: 0 },
+  { fx: 0.95, y: -0.2, z: -1, spin: -0.3, scrollTurns: -1.4, drift: 4.1, phase: 1.6 },
+  { fx: -0.68, y: -1.9, z: -0.6, spin: 0.27, scrollTurns: 1.7, drift: 5.0, phase: 3.1 },
+  { fx: 0.72, y: 1.7, z: -1.6, spin: -0.19, scrollTurns: 1.2, drift: 3.6, phase: 4.4 },
+  { fx: 0.06, y: -2.7, z: -2.4, spin: 0.16, scrollTurns: -0.9, drift: 6.2, phase: 5.7 },
+];
+
+// Portrait/phone layout: cards are scaled down (see Scene) and stacked DOWN the page at clearly
+// different heights. The centre band (y ≈ -1.3…1.3) is kept clear so cards don't hide behind the
+// full-width hero copy — one sits above the text, one below, the rest lower (seen while scrolling).
+const MOBILE_LAYOUTS: CardLayout[] = [
+  { fx: -0.5, y: 2.05, z: 0, spin: 0.22, scrollTurns: 1.2, drift: 3.0, phase: 0 },
+  { fx: 0.52, y: -2.0, z: -0.8, spin: -0.3, scrollTurns: -1.4, drift: 3.6, phase: 1.6 },
+  { fx: -0.46, y: -3.7, z: -0.5, spin: 0.27, scrollTurns: 1.6, drift: 4.6, phase: 3.1 },
+  { fx: 0.5, y: -5.3, z: -1.2, spin: -0.2, scrollTurns: 1.1, drift: 5.4, phase: 4.4 },
+  { fx: -0.12, y: -6.9, z: -1.8, spin: 0.16, scrollTurns: -0.9, drift: 6.4, phase: 5.7 },
 ];
 
 /** 0 → 1 progress down the whole document. */
@@ -87,16 +101,18 @@ interface Card3DProps {
   url: string;
   backTexture: THREE.Texture | null;
   layout: CardLayout;
+  position: [number, number, number]; // resolved from the live viewport width
+  scale: number;
   reduce: boolean;
 }
 
-function Card3D({ url, backTexture, layout, reduce }: Card3DProps) {
+function Card3D({ url, backTexture, layout, position, scale, reduce }: Card3DProps) {
   const group = useRef<THREE.Group>(null);
   const texture = useTexture(url) as THREE.Texture;
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 8;
 
-  const baseY = layout.position[1];
+  const baseY = position[1];
 
   useFrame((state: { clock: { elapsedTime: number } }) => {
     const g = group.current;
@@ -109,7 +125,7 @@ function Card3D({ url, backTexture, layout, reduce }: Card3DProps) {
   });
 
   return (
-    <group ref={group} position={layout.position}>
+    <group ref={group} position={position} scale={scale}>
       {/* Body: rounded silhouette + thickness + dark rounded edge (clips the image's white corners). */}
       <mesh geometry={bodyGeometry} castShadow>
         <meshStandardMaterial color="#0c0a07" roughness={0.72} metalness={0.35} />
@@ -154,6 +170,39 @@ const useCardBack = (): THREE.Texture | null => {
   return tex;
 };
 
+/** Renders the cards, resolving each fx into a world x from the live viewport (responsive). */
+function Scene({ images, backTexture, reduce }: { images: string[]; backTexture: THREE.Texture | null; reduce: boolean }) {
+  // viewport.{width,height} are visible world units at z=0; re-runs on resize/orientation change.
+  const viewport = useThree((state: { viewport: { width: number; height: number } }) => state.viewport);
+  // Portrait/phone: cards are big relative to the narrow frame, so shrink them and use a layout
+  // that stacks down the page (otherwise they overlap into what looks like a single card).
+  const narrow = viewport.width < viewport.height;
+  const layouts = narrow ? MOBILE_LAYOUTS : LAYOUTS;
+  const scale = narrow ? 0.6 : 1;
+  const spread = narrow ? 0.66 : 0.82; // keeps cards inside the frame with a margin
+  const halfW = viewport.width / 2;
+
+  return (
+    <Suspense fallback={null}>
+      {images.map((url, i) => {
+        const layout = layouts[i];
+        const x = layout.fx * halfW * spread;
+        return (
+          <Card3D
+            key={i}
+            url={url}
+            backTexture={backTexture}
+            layout={layout}
+            position={[x, layout.y, layout.z]}
+            scale={scale}
+            reduce={reduce}
+          />
+        );
+      })}
+    </Suspense>
+  );
+}
+
 const hasWebGL = (): boolean => {
   try {
     const canvas = document.createElement('canvas');
@@ -192,11 +241,7 @@ export const CardScene = ({ images }: { images: string[] }) => {
         <ambientLight intensity={0.75} />
         <directionalLight position={[3, 5, 6]} intensity={2.1} />
         <pointLight position={[-5, -2, 4]} intensity={40} distance={18} decay={2} color="#e7bd6a" />
-        <Suspense fallback={null}>
-          {cards.map((url, i) => (
-            <Card3D key={i} url={url} backTexture={backTexture} layout={LAYOUTS[i]} reduce={reduce} />
-          ))}
-        </Suspense>
+        <Scene images={cards} backTexture={backTexture} reduce={reduce} />
       </Canvas>
     </div>
   );

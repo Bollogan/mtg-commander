@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { logout } from '../features/auth/authSlice';
 import { NotificationBell } from './social/NotificationBell';
+import { LanguageFlag } from './LanguageFlag';
 
 export const TopNav = () => {
   const { t, i18n } = useTranslation();
@@ -13,9 +14,18 @@ export const TopNav = () => {
   const displayName = useAppSelector((s) => s.auth.displayName);
   const isAuthenticated = useAppSelector((s) => Boolean(s.auth.token));
 
+  const lang = (i18n.resolvedLanguage ?? i18n.language ?? 'en').slice(0, 2);
+
   const changeLanguage = (lng: string) => {
     void i18n.changeLanguage(lng);
   };
+
+  const langToggle = (
+    <span className="lang-toggle">
+      <LanguageFlag code={lang} />
+      <span className="lang-code">{lang.toUpperCase()}</span>
+    </span>
+  );
 
   const onLogout = () => {
     dispatch(logout());
@@ -42,46 +52,50 @@ export const TopNav = () => {
             </Nav.Link>
             {isAuthenticated && (
               <Nav.Link as={NavLink} to="/decks/build">
-                Builder
+                {t('nav.builder')}
               </Nav.Link>
             )}
             {isAuthenticated && (
               <Nav.Link as={NavLink} to="/play">
-                Play
+                {t('nav.play')}
               </Nav.Link>
             )}
             <Nav.Link as={NavLink} to="/forums">
-              Forums
+              {t('nav.forums')}
             </Nav.Link>
             <Nav.Link as={NavLink} to="/events">
-              Events
+              {t('nav.events')}
             </Nav.Link>
           </Nav>
           <Nav className="align-items-lg-center">
-            <NavDropdown title={t('nav.language')} align="end">
-              <NavDropdown.Item onClick={() => changeLanguage('en')}>English</NavDropdown.Item>
-              <NavDropdown.Item onClick={() => changeLanguage('es')}>Español</NavDropdown.Item>
+            <NavDropdown title={langToggle} align="end" className="lang-dropdown">
+              <NavDropdown.Item onClick={() => changeLanguage('en')} active={lang === 'en'}>
+                <LanguageFlag code="en" /> <span className="lang-code">EN</span> — English
+              </NavDropdown.Item>
+              <NavDropdown.Item onClick={() => changeLanguage('es')} active={lang === 'es'}>
+                <LanguageFlag code="es" /> <span className="lang-code">ES</span> — Español
+              </NavDropdown.Item>
             </NavDropdown>
             {isAuthenticated && <NotificationBell />}
             {isAuthenticated ? (
-              <NavDropdown title={displayName ?? 'Account'} align="end">
+              <NavDropdown title={displayName ?? t('nav.account')} align="end">
                 {userId && (
                   <NavDropdown.Item as={NavLink} to={`/users/${userId}`}>
-                    My profile
+                    {t('nav.profile')}
                   </NavDropdown.Item>
                 )}
                 <NavDropdown.Item as={NavLink} to="/account">
-                  Account &amp; privacy
+                  {t('nav.privacy')}
                 </NavDropdown.Item>
-                <NavDropdown.Item onClick={onLogout}>Logout</NavDropdown.Item>
+                <NavDropdown.Item onClick={onLogout}>{t('nav.logout')}</NavDropdown.Item>
               </NavDropdown>
             ) : (
               <>
                 <Nav.Link as={NavLink} to="/login">
-                  Login
+                  {t('nav.login')}
                 </Nav.Link>
                 <Nav.Link as={NavLink} to="/register">
-                  Register
+                  {t('nav.register')}
                 </Nav.Link>
               </>
             )}

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Alert, Button, Card, Col, Form, Row, Stack } from 'react-bootstrap';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import {
@@ -19,9 +19,11 @@ import { GameBoard } from '../components/game/GameBoard';
 const NewGameForm = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialDeckId = searchParams.get('deckId') ?? '';
   const [name, setName] = useState('My Game');
   const [maxPlayers, setMaxPlayers] = useState(4);
-  const [deckId, setDeckId] = useState('');
+  const [deckId, setDeckId] = useState(initialDeckId);
 
   const onCreate = async () => {
     const result = await dispatch(createRoom({ name, maxPlayers, deckId: deckId || undefined }));

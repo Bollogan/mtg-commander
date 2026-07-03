@@ -9,6 +9,7 @@
  */
 export const Canvas: any;
 export function useFrame(callback: (state: any, delta: number) => void): void;
+export function useThree(selector?: (state: any) => any): any;
 
 declare global {
   namespace React {

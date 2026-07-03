@@ -1,5 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
-import authReducer from '../features/auth/authSlice';
+import { setSessionExpiredHandler } from '../api/client';
+import authReducer, { logout } from '../features/auth/authSlice';
 import profileReducer from '../features/profile/profileSlice';
 import forumReducer from '../features/forum/forumSlice';
 import notificationsReducer from '../features/notifications/notificationsSlice';
@@ -16,6 +17,10 @@ export const store = configureStore({
     game: gameReducer,
   },
 });
+
+// When a refresh fails (dead/expired refresh token), the API layer ends the session here so the
+// UI reacts (RequireAuth routes guarded pages back to /login) instead of hanging in a 401 loop.
+setSessionExpiredHandler(() => store.dispatch(logout()));
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;

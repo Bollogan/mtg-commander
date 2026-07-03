@@ -29,7 +29,13 @@ public class Deck {
   private String commanderName;
 
   private List<DeckCard> cards = new ArrayList<>();
+  private List<DeckCategory> categories = new ArrayList<>();
   private DeckStats stats = new DeckStats();
+
+  /** Unique non-owner view count (deduplicated via Redis before incrementing). */
+  private long views;
+  /** Ids of users who liked this deck (size = like count; presence = liked-by-me). */
+  private List<UUID> likedBy = new ArrayList<>();
 
   private Instant createdAt;
   private Instant updatedAt;
@@ -110,12 +116,36 @@ public class Deck {
     this.cards = cards == null ? new ArrayList<>() : cards;
   }
 
+  public List<DeckCategory> getCategories() {
+    return categories;
+  }
+
+  public void setCategories(List<DeckCategory> categories) {
+    this.categories = categories == null ? new ArrayList<>() : categories;
+  }
+
   public DeckStats getStats() {
     return stats;
   }
 
   public void setStats(DeckStats stats) {
     this.stats = stats;
+  }
+
+  public long getViews() {
+    return views;
+  }
+
+  public void setViews(long views) {
+    this.views = views;
+  }
+
+  public List<UUID> getLikedBy() {
+    return likedBy;
+  }
+
+  public void setLikedBy(List<UUID> likedBy) {
+    this.likedBy = likedBy == null ? new ArrayList<>() : likedBy;
   }
 
   public Instant getCreatedAt() {
