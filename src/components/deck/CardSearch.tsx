@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { addCardToDraft, type ScryfallCard } from '../../features/deck/deckSlice';
 import { CardAutocomplete } from './CardAutocomplete';
+import { ManaCost } from '../ManaCost';
 
 export const CARD_DND_TYPE = 'CARD';
 
@@ -26,9 +27,9 @@ const SearchResultItem = ({ card }: { card: ScryfallCard }) => {
       style={{ cursor: 'grab', opacity: isDragging ? 0.5 : 1 }}
       title="Drag into your deck, or click +"
     >
-      <span className="text-truncate me-2">
-        {card.name}
-        {card.manaCost ? <span className="text-muted small ms-2">{card.manaCost}</span> : null}
+      <span className="d-flex align-items-center gap-2 text-truncate me-2">
+        <span className="text-truncate">{card.name}</span>
+        {card.manaCost ? <ManaCost manaCost={card.manaCost} size={15} /> : null}
       </span>
       <Button size="sm" variant="outline-success" onClick={() => dispatch(addCardToDraft(card))}>
         +

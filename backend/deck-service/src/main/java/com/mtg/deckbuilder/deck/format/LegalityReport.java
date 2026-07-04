@@ -15,7 +15,7 @@ public record LegalityReport(
     Integer maxDeckSize,
     List<Violation> violations) {
 
-  /** type ∈ {SIZE, COPIES, BANNED, RESTRICTED, NOT_LEGAL, COLOR_IDENTITY, RARITY}. */
+  /** type ∈ {SIZE, COPIES, BANNED, RESTRICTED, NOT_LEGAL, COLOR_IDENTITY, RARITY, COMMANDER}. */
   public record Violation(String type, String cardName, String detail) {
   }
 }

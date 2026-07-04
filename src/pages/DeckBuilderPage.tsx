@@ -10,10 +10,10 @@ import { Alert, Button, Card, Form, Spinner, Stack } from 'react-bootstrap';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { apiClient } from '../api/client';
 import {
-  deleteDeck, fetchDeck, fetchCardByName, saveDraft, setDraftMeta,
+  deleteDeck, fetchDeck, fetchCardByName, fetchCommanderEligible, saveDraft, setDraftMeta,
   type DeckVisibility, type ScryfallCard,
 } from '../features/deck/deckSlice';
-import { evaluateDraft, rulesFor, FORMATS, type FormatRules } from '../data/formats';
+import { evaluateDraft, rulesFor, FORMATS, type FormatRules, type CommanderInfo } from '../data/formats';
 import { AddCardsModal } from '../components/deck/AddCardsModal';
 import { CategoryManager } from '../components/deck/CategoryManager';
 import { DeckStatsPanel } from '../components/deck/DeckStatsPanel';
@@ -46,6 +46,7 @@ export const DeckBuilderPage = () => {
   const [imageSize, setImageSize] = useState<ImageSize>('md');
   const [formats, setFormats] = useState<FormatRules[]>(FORMATS);
   const [commanderCard, setCommanderCard] = useState<ScryfallCard | null>(null);
+  const [commanderEligible, setCommanderEligible] = useState<boolean | null>(null);
   const [showImportExport, setShowImportExport] = useState(false);
   const [showAddCards, setShowAddCards] = useState(false);
 
@@ -64,32 +65,44 @@ export const DeckBuilderPage = () => {
     dispatch(fetchDeck(id));
   }, [dispatch, id, navigate]);
 
-  // Resolve commander card by name so we can show its image and use its colour identity.
+  // Resolve commander card by name (for its image + colour identity) and its is:commander verdict.
   useEffect(() => {
     const name = draft.commanderName.trim();
     if (!rulesFor(draft.format).requiresCommander || !name) {
       setCommanderCard(null);
+      setCommanderEligible(null);
       return;
     }
+    let alive = true;
+    setCommanderEligible(null);
     dispatch(fetchCardByName(name))
       .unwrap()
-      .then(setCommanderCard)
-      .catch(() => setCommanderCard(null));
+      .then((c) => { if (alive) setCommanderCard(c); })
+      .catch(() => { if (alive) setCommanderCard(null); });
+    dispatch(fetchCommanderEligible(name))
+      .unwrap()
+      .then((e) => { if (alive) setCommanderEligible(e); })
+      .catch(() => { if (alive) setCommanderEligible(null); });
+    return () => { alive = false; };
   }, [dispatch, draft.format, draft.commanderName]);
 
-  // Commander colour identity for the live legality check.
-  const commanderIdentity = useMemo(() => {
+  // Resolved commander (identity + eligibility) for the live legality check.
+  const commander = useMemo<CommanderInfo | null>(() => {
     if (!rulesFor(draft.format).requiresCommander) return null;
-    return commanderCard?.colorIdentity ?? null;
-  }, [draft.format, commanderCard]);
+    return {
+      name: draft.commanderName,
+      colorIdentity: commanderCard?.colorIdentity ?? null,
+      eligible: commanderEligible,
+    };
+  }, [draft.format, draft.commanderName, commanderCard, commanderEligible]);
 
   const report = useMemo(
     () => evaluateDraft(
       draft.format,
       draft.cards.map((c) => ({ qty: c.qty, name: c.name, meta: cardMeta(c) })),
-      commanderIdentity,
+      commander,
     ),
-    [draft.format, draft.cards, commanderIdentity],
+    [draft.format, draft.cards, commander],
   );
 
   const flagged = useMemo(
@@ -140,6 +153,13 @@ export const DeckBuilderPage = () => {
             {status === 'failed' && error && (
               <Alert variant="danger" className="mb-3">
                 {error}
+              </Alert>
+            )}
+            {report.violations.some((v) => v.type === 'COMMANDER') && (
+              <Alert variant="warning" className="mb-3">
+                {report.violations.find((v) => v.type === 'COMMANDER')?.cardName
+                  ? t('builder.commanderInvalidWarning', 'The chosen commander cannot be a commander — it must be a legendary creature (or a card that says it can be your commander).')
+                  : t('builder.commanderMissingWarning', 'This format requires a commander.')}
               </Alert>
             )}
             {report.violations.some((v) => v.type === 'COLOR_IDENTITY') && (

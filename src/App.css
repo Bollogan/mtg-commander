@@ -1226,12 +1226,20 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--radius-pill);
+  border-radius: 50%;
+  aspect-ratio: 1 / 1;
   background: rgba(255, 255, 255, 0.07);
   border: 1px solid var(--border);
   color: var(--text);
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
+  line-height: 1;
+}
+/* Generic/colorless mana: the official light-grey pip look. */
+.mana-token--generic {
+  background: radial-gradient(circle at 38% 32%, #ddd8d1, #b7b0a8 78%);
+  border: 1px solid #8f887f;
+  color: #17140f;
+  box-shadow: inset 0 -2px 3px rgba(0, 0, 0, 0.25);
 }
 .category-title {
   margin: 0;
@@ -2059,6 +2067,9 @@
   gap: 0.35rem;
 }
 .color-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 2.35rem;
   height: 2.35rem;
   border-radius: var(--radius-pill);
@@ -2343,6 +2354,8 @@
   border-radius: var(--radius);
   padding: 0;
 }
+/* Clip the category box so a card sliding down on hover can't spill into the category below/beside it. */
+.stack-col { overflow: hidden; }
 .stack-col.is-over { outline: 2px dashed var(--accent); outline-offset: 6px; }
 .stack-col__head {
   display: flex;
@@ -2353,33 +2366,182 @@
   font-weight: 600;
 }
 .stack-col__count { color: var(--accent-soft); font-size: 0.85rem; }
-.stack-col__cards { display: flex; flex-direction: column; }
+/* Archidekt-style: full card images overlap so only each card's name strip shows;
+   hovering a card reveals it fully and pushes the cards below it down. */
+.stack-col__cards { display: flex; flex-direction: column; padding-bottom: 1.35rem; }
 .stack-card {
   position: relative;
-  transition: transform 0.2s var(--ease), margin-top 0.2s var(--ease);
+  transition: transform 0.18s var(--ease);
   z-index: 1;
 }
-.stack-card:not(:first-child) { margin-top: calc(var(--card-w, 140px) * -0.86); }
-.stack-card:hover {
-  z-index: 10;
-  transform: translateY(-16px) scale(1.02);
-}
-.stack-card:hover ~ .stack-card {
-  transform: translateY(calc(var(--card-w, 140px) * 0.62));
-}
+/* Overlap upward so only the top ~2.2rem (the printed name bar) of each card peeks out. */
+.stack-card:not(:first-child) { margin-top: calc(2.2rem - var(--card-w, 200px) * 1.3968); }
+.stack-card:hover { z-index: 20; }
+/* Reveal the hovered card fully by sliding every following card down past it (+ its price line). */
+.stack-card:hover ~ .stack-card { transform: translateY(calc(var(--card-w, 200px) * 1.3968 - 2.2rem + 1.6rem)); }
+.stack-card .deck-thumb { cursor: pointer; }
 .stack-card__controls {
   position: absolute;
   left: 50%;
-  bottom: 6px;
+  bottom: 8px;
   transform: translateX(-50%);
   opacity: 0;
   transition: opacity var(--dur) var(--ease);
-  background: rgba(10, 8, 4, 0.75);
+  background: rgba(10, 8, 4, 0.8);
   border-radius: var(--radius-pill);
   padding: 0.15rem 0.3rem;
   backdrop-filter: blur(4px);
+  z-index: 2;
 }
 .stack-card:hover .stack-card__controls { opacity: 1; }
+/* Price line sits just below the card (absolute so it doesn't add to the overlap height);
+   it's covered by the next card until this one is revealed / is the last in the stack. */
+.card-prices {
+  display: flex;
+  gap: 0.7rem;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+.stack-card .card-prices { position: absolute; top: 100%; left: 0; right: 0; padding: 3px 0.35rem 0; }
+.card-prices__item { display: inline-flex; align-items: center; gap: 0.15rem; }
+.card-prices__src { font-weight: 700; color: var(--accent-soft); }
+
+/* ---- Archidekt-style card overlay ----------------------------------------- */
+.card-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3500;
+  background: rgba(6, 5, 10, 0.72);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  animation: overlay-fade 0.15s var(--ease);
+}
+@keyframes overlay-fade { from { opacity: 0; } to { opacity: 1; } }
+.card-overlay__panel {
+  position: relative;
+  width: min(880px, 100%);
+  max-height: 92vh;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: minmax(220px, 300px) 1fr;
+  grid-template-areas: "media body" "nav nav";
+  gap: 1.4rem;
+  padding: 1.5rem;
+  background: var(--bg-elev-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+}
+.card-overlay__close {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.7rem;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg-elev-2);
+  color: var(--text);
+  cursor: pointer;
+  z-index: 2;
+}
+.card-overlay__close:hover { border-color: var(--accent); }
+.card-overlay__media { grid-area: media; }
+.card-overlay__img { border-radius: var(--radius); overflow: hidden; }
+.card-overlay__img img { display: block; width: 100%; aspect-ratio: 63 / 88; object-fit: cover; }
+.card-overlay__img.is-foil { box-shadow: 0 0 0 2px rgba(180, 139, 255, 0.7), 0 0 20px rgba(122, 240, 208, 0.4); }
+.card-overlay__prices {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: center;
+  margin-top: 0.7rem;
+  flex-wrap: wrap;
+}
+.card-overlay__price {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-pill);
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+.card-overlay__price-src { color: var(--accent); font-weight: 800; }
+.card-overlay__body { grid-area: body; min-width: 0; }
+.card-overlay__title { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.card-overlay__title h3 { margin: 0; font-family: var(--font-display); font-size: 1.35rem; }
+.card-overlay__type { font-size: 0.85rem; margin-top: 0.15rem; }
+.card-overlay__oracle {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin: 0.6rem 0 0.9rem;
+  max-height: 8.5rem;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}
+.card-overlay__section {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  padding: 0.55rem 0;
+  border-top: 1px solid var(--border);
+}
+.card-overlay__section--col { flex-direction: column; align-items: stretch; }
+.card-overlay__label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  flex: 0 0 100%;
+}
+.card-overlay__section:not(.card-overlay__section--col) .card-overlay__label { flex: 0 0 auto; margin-right: auto; }
+.card-overlay__qty input {
+  width: 3rem;
+  text-align: center;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  border-radius: 6px;
+  -moz-appearance: textfield;
+}
+.card-overlay__addcat { display: flex; gap: 0.4rem; }
+.card-overlay__actions { display: flex; gap: 0.5rem; margin-top: 0.9rem; flex-wrap: wrap; }
+.card-overlay__nav {
+  grid-area: nav;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.9rem;
+}
+.card-overlay__nav button {
+  max-width: 48%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius-pill);
+  padding: 0.35rem 0.8rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.card-overlay__nav button:hover:not(:disabled) { border-color: var(--accent); }
+.card-overlay__nav button:disabled { opacity: 0.4; cursor: default; }
+@media (max-width: 620px) {
+  .card-overlay__panel { grid-template-columns: 1fr; grid-template-areas: "media" "body" "nav"; }
+  .card-overlay__media { max-width: 240px; margin: 0 auto; }
+}
 
 /* Grid view */
 .grid-view { display: flex; flex-direction: column; gap: 1.75rem; }

@@ -31,6 +31,7 @@ public class ScryfallClient {
   private static final String SEARCH_KEY = "scryfall:search:";
   private static final String AUTOCOMPLETE_KEY = "scryfall:autocomplete:";
   private static final String COMMANDER_AUTOCOMPLETE_KEY = "scryfall:commander-autocomplete:v2:";
+  private static final String COMMANDER_CHECK_KEY = "scryfall:is-commander:v1:";
   private static final String PRINTINGS_KEY = "scryfall:printings:v2:";
 
   private final WebClient webClient;
@@ -178,6 +179,65 @@ public class ScryfallClient {
     }
     writeJson(cacheKey, items);
     return items;
+  }
+
+  /**
+   * Whether the exactly-named card is a legal commander, per Scryfall's authoritative
+   * {@code is:commander} (covers legendary creatures, planeswalker/vehicle commanders like
+   * Shorikai, partners, backgrounds, etc.). Cached. Returns:
+   * <ul>
+   *   <li>{@code TRUE}/{@code FALSE} when Scryfall gives a definitive answer,</li>
+   *   <li>{@code null} when it can't be resolved (blank name, network error) so callers skip
+   *       the check rather than false-flagging a valid commander.</li>
+   * </ul>
+   */
+  public Boolean isValidCommander(String name) {
+    if (name == null || name.isBlank()) {
+      return null;
+    }
+    String key = COMMANDER_CHECK_KEY + name.trim().toLowerCase();
+    String cached = redis.opsForValue().get(key);
+    if (cached != null) {
+      return Boolean.parseBoolean(cached);
+    }
+    Boolean eligible = queryIsCommander(name.trim());
+    if (eligible != null) {
+      try {
+        redis.opsForValue().set(key, Boolean.toString(eligible), cacheTtl);
+      } catch (RuntimeException e) {
+        log.debug("Cache write failed for {}: {}", key, e.getMessage());
+      }
+    }
+    return eligible;
+  }
+
+  private Boolean queryIsCommander(String name) {
+    try {
+      JsonNode response = webClient.get()
+          .uri(uri -> uri.path("/cards/search")
+              .queryParam("q", "is:commander !\"" + name + "\"")
+              .queryParam("unique", "cards")
+              .build())
+          .retrieve()
+          // Scryfall returns 404 when the query matches nothing — here that means the named
+          // card exists but isn't a commander (or isn't a card): a definitive "not eligible".
+          .onStatus(status -> status.value() == 404, resp -> Mono.empty())
+          .bodyToMono(JsonNode.class)
+          .timeout(REQUEST_TIMEOUT)
+          .block();
+      if (response == null || !"list".equals(response.path("object").asText())) {
+        return false;
+      }
+      for (JsonNode raw : response.path("data")) {
+        if (name.equalsIgnoreCase(raw.path("name").asText())) {
+          return true;
+        }
+      }
+      return false;
+    } catch (RuntimeException e) {
+      log.warn("Scryfall isValidCommander('{}') failed: {}", name, e.getMessage());
+      return null; // unknown → don't false-flag
+    }
   }
 
   private List<ScryfallCard> searchCommanders(String query, int limit) {

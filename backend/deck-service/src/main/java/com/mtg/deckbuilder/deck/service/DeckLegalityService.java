@@ -50,7 +50,7 @@ public class DeckLegalityService {
     Map<String, ScryfallCard> meta = scryfall.getCards(
         cards.stream().map(DeckCard::getScryfallId).toList());
 
-    Set<String> commanderIdentity = resolveCommanderIdentity(deck, rules);
+    Set<String> commanderIdentity = validateCommander(deck, rules, violations);
 
     for (DeckCard dc : cards) {
       ScryfallCard c = meta.get(dc.getScryfallId());
@@ -91,14 +91,30 @@ public class DeckLegalityService {
         deckSize, rules.minDeckSize(), rules.maxDeckSize(), violations);
   }
 
-  private Set<String> resolveCommanderIdentity(Deck deck, FormatRules rules) {
-    if (!rules.requiresCommander() || deck.getCommanderName() == null
-        || deck.getCommanderName().isBlank()) {
+  /**
+   * For commander formats, checks that a commander is named and that the named card can actually be
+   * one (adding COMMANDER violations otherwise), and returns its colour identity for the per-card
+   * identity check — or {@code null} when the format has no commander or it can't be resolved.
+   */
+  private Set<String> validateCommander(Deck deck, FormatRules rules, List<Violation> violations) {
+    if (!rules.requiresCommander()) {
       return null;
     }
-    ScryfallCard commander = scryfall.getCardByName(deck.getCommanderName());
+    String name = deck.getCommanderName();
+    if (name == null || name.isBlank()) {
+      violations.add(new Violation("COMMANDER", null, "This format requires a commander"));
+      return null;
+    }
+    // Eligibility is delegated to Scryfall's authoritative is:commander (FALSE = definitively not a
+    // commander; null = couldn't check → skip rather than false-flag a valid one like Shorikai).
+    Boolean eligible = scryfall.isValidCommander(name);
+    ScryfallCard commander = scryfall.getCardByName(name);
+    if (Boolean.FALSE.equals(eligible)) {
+      violations.add(new Violation("COMMANDER",
+          commander != null ? commander.name() : name, "This card can't be a commander"));
+    }
     if (commander == null || commander.colorIdentity() == null) {
-      return null; // can't resolve → skip the identity check rather than false-flag
+      return null;
     }
     return new HashSet<>(commander.colorIdentity());
   }

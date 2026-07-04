@@ -9,6 +9,7 @@ import {
   fetchCardById,
   searchCards,
 } from '../../features/deck/deckSlice';
+import { ManaCost } from '../ManaCost';
 
 const DEBOUNCE_MS = 180;
 
@@ -147,11 +148,11 @@ export const CardAutocomplete = () => {
                 />
               )}
               <div className="text-truncate">
-                <div className="fw-medium">{item.name}</div>
-                <div className="text-muted small">
-                  {item.manaCost ? `${item.manaCost} · ` : ''}
-                  {item.typeLine}
+                <div className="fw-medium d-flex align-items-center gap-2">
+                  <span className="text-truncate">{item.name}</span>
+                  {item.manaCost ? <ManaCost manaCost={item.manaCost} size={14} /> : null}
                 </div>
+                <div className="text-muted small">{item.typeLine}</div>
               </div>
             </ListGroup.Item>
           ))}

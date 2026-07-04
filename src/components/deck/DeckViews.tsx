@@ -13,10 +13,24 @@ import {
 } from '../../features/deck/deckSlice';
 import { CARD_DND_TYPE } from './CardSearch';
 import { useCardContextMenu } from './CardContextMenu';
+import { ManaCost } from '../ManaCost';
 import {
-  groupCards, groupPrice, IMAGE_WIDTHS, PRICE_SYMBOL,
+  cardPrice, groupCards, groupPrice, IMAGE_WIDTHS, PRICE_SYMBOL,
   type CardGroup, type GroupBy, type ImageSize, type PriceSource, type SortBy,
 } from './deckView';
+
+/** TCG (USD) + Cardmarket (EUR) price line shown under each card. */
+const CardPrices = ({ card }: { card: DeckCard }) => {
+  const tcg = cardPrice(card, 'usd', false);
+  const cm = cardPrice(card, 'eur', false);
+  if (tcg == null && cm == null) return null;
+  return (
+    <span className="card-prices">
+      {tcg != null && <span className="card-prices__item" title="TCGplayer"><span className="card-prices__src">$</span>{tcg.toFixed(2)}</span>}
+      {cm != null && <span className="card-prices__item" title="Cardmarket"><span className="card-prices__src">€</span>{cm.toFixed(2)}</span>}
+    </span>
+  );
+};
 
 export const DECK_CARD_DND = 'DECK_CARD';
 
@@ -44,12 +58,12 @@ const SectionPrice = ({ cards, source, foil }: { cards: DeckCard[]; source: Pric
 
 const CardImage = ({ card, width, flagged }: { card: DeckCard; width: number; flagged: boolean }) => {
   const navigate = useNavigate();
-  const { openCardMenu } = useCardContextMenu();
+  const { openCardMenu, openCardOverlay, interactive } = useCardContextMenu();
   return (
     <div
       className={`deck-thumb${flagged ? ' is-flagged' : ''}${card.foil ? ' is-foil' : ''}`}
       style={{ width }}
-      onClick={() => navigate(`/card/${card.scryfallId}`)}
+      onClick={() => (interactive ? openCardOverlay(card.scryfallId) : navigate(`/card/${card.scryfallId}`))}
       onContextMenu={(e) => openCardMenu(card, e)}
     >
       {card.imageUrl ? (
@@ -110,7 +124,20 @@ const DraggableCard = ({
   );
 };
 
-// ─── Stacks view (columns by group, cards overlapping, drag between categories) ──
+// ─── Stacks view (compact name+cost rows that expand to the full card on hover) ──
+
+/**
+ * One card in a stack: the full card image, overlapped with its siblings so only the
+ * printed name strip peeks out. Hovering reveals the whole card (pushing the cards below
+ * it down) and shows the quantity controls; each card's TCG/Cardmarket price sits under it.
+ */
+const StackCardRow = ({ card, width, flagged, readonly }: { card: DeckCard; width: number; flagged: boolean; readonly?: boolean }) => (
+  <DraggableCard card={card} className="stack-card" readonly={readonly}>
+    <CardImage card={card} width={width} flagged={flagged} />
+    <div className="stack-card__controls"><QtyControls card={card} readonly={readonly} /></div>
+    <CardPrices card={card} />
+  </DraggableCard>
+);
 
 const StackColumn = ({ group, groupBy, imageSize, flagged, readonly, priceSource, priceFoil }: { group: CardGroup } & Omit<ViewProps, 'cards' | 'sortBy' | 'categories'>) => {
   const dispatch = useAppDispatch();
@@ -145,10 +172,7 @@ const StackColumn = ({ group, groupBy, imageSize, flagged, readonly, priceSource
       </div>
       <div className="stack-col__cards" style={{ width: width + 24, ['--card-w' as string]: `${width}px` } as React.CSSProperties}>
         {group.cards.map((card) => (
-          <DraggableCard key={card.scryfallId} card={card} className="stack-card">
-            <CardImage card={card} width={width} flagged={flagged.has(card.name)} />
-            <div className="stack-card__controls"><QtyControls card={card} readonly={readonly} /></div>
-          </DraggableCard>
+          <StackCardRow key={card.scryfallId} card={card} width={width} flagged={flagged.has(card.name)} readonly={readonly} />
         ))}
       </div>
     </div>
@@ -179,14 +203,13 @@ export const StacksView = ({ cards, groupBy, sortBy, imageSize, flagged, categor
 
   // Masonry: place each category (in deck order) into the column that is currently shortest,
   // so a 2nd "row" fills the gaps under the shorter categories instead of aligning to rigid rows.
-  // Height is estimated from the number of distinct cards (overlapping stack), which is how the
-  // user reasons about it ("category1 twice as tall as category2").
+  // Cards overlap showing only their name strip (~35px), plus the last card shown in full.
   const columns: { items: CardGroup[]; height: number }[] =
     Array.from({ length: colCount }, () => ({ items: [], height: 0 }));
   const cardH = (width * 88) / 63;
-  const slice = width * 0.55; // visible height of each overlapped card
+  const strip = 35; // visible name strip of an overlapped card
   for (const group of groups) {
-    const est = 44 + cardH + Math.max(0, group.cards.length - 1) * slice + GAP;
+    const est = 44 + Math.max(0, group.cards.length - 1) * strip + cardH + GAP;
     let idx = 0;
     for (let i = 1; i < colCount; i++) if (columns[i].height < columns[idx].height) idx = i;
     columns[idx].items.push(group);
@@ -245,7 +268,7 @@ export const TextView = ({ cards, groupBy, sortBy, flagged, categories, readonly
               <li key={card.scryfallId} className={`text-row${flagged.has(card.name) ? ' is-flagged' : ''}${card.foil ? ' is-foil' : ''}`} onContextMenu={(e) => openCardMenu(card, e)}>
                 <QtyControls card={card} readonly={readonly} />
                 <span className="text-row__name">{card.name}</span>
-                {card.manaCost && <span className="text-row__cost text-muted">{card.manaCost}</span>}
+                {card.manaCost && <span className="text-row__cost"><ManaCost manaCost={card.manaCost} size={14} /></span>}
                 {card.imageUrl && <img className="text-row__preview" src={card.imageUrl} alt="" aria-hidden="true" />}
               </li>
             ))}

@@ -3,8 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button, Card, Container, Spinner, Stack } from 'react-bootstrap';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { fetchCardByName, fetchDeck } from '../features/deck/deckSlice';
-import { evaluateDraft, rulesFor } from '../data/formats';
+import { fetchCardByName, fetchCommanderEligible, fetchDeck } from '../features/deck/deckSlice';
+import { evaluateDraft, rulesFor, type CommanderInfo } from '../data/formats';
 import { cardMeta, toViewCard, type GroupBy, type ImageSize, type SortBy, type ViewMode } from '../components/deck/deckView';
 import { DeckToolbar } from '../components/deck/DeckToolbar';
 import { LegalityPanel } from '../components/deck/LegalityPanel';
@@ -27,6 +27,7 @@ export const DeckDetailPage = () => {
   const [imageSize, setImageSize] = useState<ImageSize>('md');
   const [formats, setFormats] = useState<FormatRules[]>([]);
   const [commanderCard, setCommanderCard] = useState<ScryfallCard | null>(null);
+  const [commanderEligible, setCommanderEligible] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (id) dispatch(fetchDeck(id));
@@ -41,32 +42,45 @@ export const DeckDetailPage = () => {
   useEffect(() => {
     if (!current || !rulesFor(current.format).requiresCommander || !current.commanderName) {
       setCommanderCard(null);
+      setCommanderEligible(null);
       return;
     }
-    dispatch(fetchCardByName(current.commanderName))
+    const name = current.commanderName;
+    let alive = true;
+    setCommanderEligible(null);
+    dispatch(fetchCardByName(name))
       .unwrap()
-      .then(setCommanderCard)
-      .catch(() => setCommanderCard(null));
+      .then((c) => { if (alive) setCommanderCard(c); })
+      .catch(() => { if (alive) setCommanderCard(null); });
+    dispatch(fetchCommanderEligible(name))
+      .unwrap()
+      .then((e) => { if (alive) setCommanderEligible(e); })
+      .catch(() => { if (alive) setCommanderEligible(null); });
+    return () => { alive = false; };
   }, [dispatch, current]);
 
   const deck = current;
 
-  const commanderIdentity = useMemo(() => {
+  const commander = useMemo<CommanderInfo | null>(() => {
     if (!deck || !rulesFor(deck.format).requiresCommander || !deck.commanderName) return null;
-    const commander = deck.cards.find(
-      (c) => c.name.toLowerCase() === deck.commanderName!.toLowerCase(),
+    const c = deck.cards.find(
+      (card) => card.name.toLowerCase() === deck.commanderName!.toLowerCase(),
     );
-    return commander?.colorIdentity ?? null;
-  }, [deck]);
+    return {
+      name: deck.commanderName,
+      colorIdentity: c?.colorIdentity ?? commanderCard?.colorIdentity ?? null,
+      eligible: commanderEligible,
+    };
+  }, [deck, commanderCard, commanderEligible]);
 
   const report = useMemo(() => {
     if (!deck) return null;
     return evaluateDraft(
       deck.format,
       deck.cards.map((c) => ({ qty: c.qty, name: c.name, meta: cardMeta(c) })),
-      commanderIdentity,
+      commander,
     );
-  }, [deck, commanderIdentity]);
+  }, [deck, commander]);
 
   const flagged = useMemo(() => {
     if (!report) return new Set<string>();

@@ -175,6 +175,7 @@ const resources = {
         viol_not_legal: 'Not legal',
         viol_identity: 'Color identity',
         viol_rarity: 'Rarity',
+        viol_commander: 'Commander',
         readOnly: 'You are viewing this deck in read-only mode.',
         addCardsSearch: 'Search',
         addCardsSuggestions: 'Suggestions',
@@ -184,7 +185,9 @@ const resources = {
         types: 'Types',
         colors: 'Colors',
         addCards: 'Add cards',
-        colorIdentityWarning: 'One or more cards are outside the commander colour identity.'
+        colorIdentityWarning: 'One or more cards are outside the commander colour identity.',
+        commanderInvalidWarning: 'The chosen commander cannot be a commander — it must be a legendary creature (or a card that says it can be your commander).',
+        commanderMissingWarning: 'This format requires a commander.'
       },
       card: {
         details: 'Card Details',
@@ -427,6 +430,7 @@ const resources = {
         viol_not_legal: 'No legal',
         viol_identity: 'Identidad de color',
         viol_rarity: 'Rareza',
+        viol_commander: 'Comandante',
         readOnly: 'Estás viendo este mazo en modo solo lectura.',
         addCardsSearch: 'Buscar',
         addCardsSuggestions: 'Sugerencias',
@@ -436,7 +440,9 @@ const resources = {
         types: 'Tipos',
         colors: 'Colores',
         addCards: 'Añadir cartas',
-        colorIdentityWarning: 'Una o más cartas están fuera de la identidad de color del comandante.'
+        colorIdentityWarning: 'Una o más cartas están fuera de la identidad de color del comandante.',
+        commanderInvalidWarning: 'El comandante elegido no puede serlo — debe ser una criatura legendaria (o una carta que indique que puede ser tu comandante).',
+        commanderMissingWarning: 'Este formato requiere un comandante.'
       },
       card: {
         details: 'Detalles de la carta',

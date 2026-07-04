@@ -178,6 +178,18 @@ public class DeckController {
     return scryfallClient.getPrintings(name);
   }
 
+  /**
+   * Whether the named card can legally be a commander (Scryfall's authoritative is:commander).
+   * {@code eligible} is null when it can't be resolved, so the UI skips the check.
+   */
+  @GetMapping("/cards/commander-eligible")
+  public CommanderEligibility commanderEligible(@RequestParam("name") String name) {
+    return new CommanderEligibility(scryfallClient.isValidCommander(name));
+  }
+
+  public record CommanderEligibility(Boolean eligible) {
+  }
+
   // ─── Category templates ────────────────────────────────────────────────────
 
   @GetMapping("/category-templates")

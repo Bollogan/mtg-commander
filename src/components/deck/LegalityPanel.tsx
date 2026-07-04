@@ -9,6 +9,7 @@ const VIOLATION_LABEL: Record<Violation['type'], string> = {
   NOT_LEGAL: 'builder.viol_not_legal',
   COLOR_IDENTITY: 'builder.viol_identity',
   RARITY: 'builder.viol_rarity',
+  COMMANDER: 'builder.viol_commander',
 };
 
 export const LegalityPanel = ({ report }: { report: LegalityReport }) => {

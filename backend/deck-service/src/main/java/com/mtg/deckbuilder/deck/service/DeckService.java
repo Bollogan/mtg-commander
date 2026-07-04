@@ -256,31 +256,31 @@ public class DeckService {
     return saved;
   }
 
-  /** Enriches with the owner's current profile via Feign + per-card prices; degrades gracefully. */
+  /** Enriches with the owner's current profile via Feign + per-card Scryfall data; degrades gracefully. */
   private DeckDto enrich(Deck deck, UUID requesterId) {
-    Map<String, ScryfallCard.Prices> prices = resolvePrices(deck);
+    Map<String, ScryfallCard> cards = resolveCardMap(deck);
     try {
       UserSummary user = userClient.getUser(deck.getOwnerId());
       if (user != null) {
-        return DeckDto.from(deck, user.displayName(), user.avatarUrl(), requesterId, prices);
+        return DeckDto.from(deck, user.displayName(), user.avatarUrl(), requesterId, cards);
       }
     } catch (RuntimeException e) {
       log.debug("user-service enrichment unavailable for {}: {}",
           deck.getOwnerId(), e.getMessage());
     }
-    return DeckDto.from(deck, deck.getOwnerName(), null, requesterId, prices);
+    return DeckDto.from(deck, deck.getOwnerName(), null, requesterId, cards);
   }
 
-  /** Resolves current Scryfall prices for the deck's cards (Redis-cached batch). */
-  private Map<String, ScryfallCard.Prices> resolvePrices(Deck deck) {
+  /**
+   * Resolves the deck's cards from Scryfall (Redis-cached batch) so the DTO can carry live prices
+   * plus the colour identity / rarity / legalities the frontend needs for format validation.
+   */
+  private Map<String, ScryfallCard> resolveCardMap(Deck deck) {
     try {
       List<String> ids = deck.getCards().stream().map(DeckCard::getScryfallId).toList();
-      Map<String, ScryfallCard> resolved = scryfallClient.getCards(ids);
-      Map<String, ScryfallCard.Prices> out = new java.util.HashMap<>();
-      resolved.forEach((id, sc) -> out.put(id, sc.prices()));
-      return out;
+      return scryfallClient.getCards(ids);
     } catch (RuntimeException e) {
-      log.debug("price resolution unavailable for {}: {}", deck.getId(), e.getMessage());
+      log.debug("card resolution unavailable for {}: {}", deck.getId(), e.getMessage());
       return Map.of();
     }
   }

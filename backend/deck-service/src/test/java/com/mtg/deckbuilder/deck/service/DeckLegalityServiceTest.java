@@ -85,7 +85,71 @@ class DeckLegalityServiceTest {
   }
 
   @Test
+  void nonCommanderCardCannotBeCommander() {
+    when(scryfall.isValidCommander("Sol Ring")).thenReturn(false);
+    when(scryfall.getCardByName("Sol Ring"))
+        .thenReturn(card("sol", "Sol Ring", "Artifact", "uncommon",
+            List.of(), Map.of("commander", "legal")));
+    when(scryfall.getCards(any())).thenReturn(Map.of());
+
+    LegalityReport report = service.evaluate(deck("commander", "Sol Ring"));
+
+    assertThat(report.violations()).anyMatch(v ->
+        "COMMANDER".equals(v.type()) && "Sol Ring".equals(v.cardName()));
+  }
+
+  @Test
+  void commanderFormatRequiresACommander() {
+    when(scryfall.getCards(any())).thenReturn(Map.of());
+
+    LegalityReport report = service.evaluate(deck("commander", null,
+        entry("u1", "Blue Spell", "Instant", 1)));
+
+    assertThat(report.violations()).anyMatch(v ->
+        "COMMANDER".equals(v.type()) && v.cardName() == null);
+  }
+
+  @Test
+  void legendaryCreatureIsAValidCommander() {
+    when(scryfall.isValidCommander("Gruul Commander")).thenReturn(true);
+    when(scryfall.getCardByName("Gruul Commander"))
+        .thenReturn(card("cmd", "Gruul Commander", "Legendary Creature", "mythic",
+            List.of("R", "G"), Map.of("commander", "legal")));
+    when(scryfall.getCards(any())).thenReturn(Map.of());
+
+    LegalityReport report = service.evaluate(deck("commander", "Gruul Commander"));
+
+    assertThat(types(report)).doesNotContain("COMMANDER");
+  }
+
+  @Test
+  void legendaryVehicleCommanderIsAcceptedViaScryfall() {
+    // Shorikai, Genesis Engine: a Legendary Artifact — Vehicle whose oracle text does NOT say
+    // "can be your commander", yet is a legal commander — a heuristic would wrongly reject it.
+    when(scryfall.isValidCommander("Shorikai, Genesis Engine")).thenReturn(true);
+    when(scryfall.getCardByName("Shorikai, Genesis Engine"))
+        .thenReturn(card("sho", "Shorikai, Genesis Engine", "Legendary Artifact — Vehicle",
+            "mythic", List.of("W", "U"), Map.of("commander", "legal")));
+    when(scryfall.getCards(any())).thenReturn(Map.of());
+
+    LegalityReport report = service.evaluate(deck("commander", "Shorikai, Genesis Engine"));
+
+    assertThat(types(report)).doesNotContain("COMMANDER");
+  }
+
+  @Test
+  void commanderEligibilityIsSkippedWhenScryfallCantResolve() {
+    when(scryfall.isValidCommander("Mystery Card")).thenReturn(null);
+    when(scryfall.getCards(any())).thenReturn(Map.of());
+
+    LegalityReport report = service.evaluate(deck("commander", "Mystery Card"));
+
+    assertThat(types(report)).doesNotContain("COMMANDER");
+  }
+
+  @Test
   void commanderColorIdentityIsEnforced() {
+    when(scryfall.isValidCommander("Gruul Commander")).thenReturn(true);
     when(scryfall.getCardByName("Gruul Commander"))
         .thenReturn(card("cmd", "Gruul Commander", "Legendary Creature", "mythic",
             List.of("R", "G"), Map.of("commander", "legal")));

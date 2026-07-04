@@ -48,7 +48,33 @@ export interface CardMeta {
 }
 
 export type ViolationType =
-  | 'SIZE' | 'COPIES' | 'BANNED' | 'RESTRICTED' | 'NOT_LEGAL' | 'COLOR_IDENTITY' | 'RARITY';
+  | 'SIZE' | 'COPIES' | 'BANNED' | 'RESTRICTED' | 'NOT_LEGAL' | 'COLOR_IDENTITY' | 'RARITY'
+  | 'COMMANDER';
+
+/**
+ * The resolved commander for a commander-format deck (null when the format has no commander).
+ * `eligible` is Scryfall's authoritative is:commander verdict (null while unresolved/loading).
+ */
+export interface CommanderInfo {
+  name: string;
+  colorIdentity: string[] | null;
+  eligible: boolean | null;
+}
+
+/**
+ * Lenient, offline gate used only to disable the "Set Commander" button for obvious non-commanders
+ * without a round-trip: any legendary creature / vehicle / spacecraft / planeswalker, or a card that
+ * says it can be your commander. The authoritative verdict is Scryfall's is:commander (see
+ * `CommanderInfo.eligible`), which the legality panel uses — this only blocks clear mistakes
+ * (instants, artifacts, basics) instantly.
+ */
+export const canBeCommander = (typeLine: string | null, oracleText: string | null): boolean => {
+  const type = (typeLine ?? '').toLowerCase();
+  const text = (oracleText ?? '').toLowerCase();
+  if (text.includes('can be your commander')) return true;
+  if (!type.includes('legendary')) return false;
+  return /creature|vehicle|spacecraft|planeswalker/.test(type);
+};
 
 export interface Violation {
   type: ViolationType;
@@ -79,23 +105,35 @@ export interface DraftEntry {
 }
 
 /**
- * Local, best-effort legality check mirroring DeckLegalityService. `commanderIdentity` is the
- * commander's colour identity (or null to skip that check when it can't be resolved client-side).
+ * Local, best-effort legality check mirroring DeckLegalityService. `commander` is the resolved
+ * commander for commander formats (or null to skip commander/identity checks when it can't be
+ * resolved client-side yet).
  */
 export const evaluateDraft = (
   format: string,
   entries: DraftEntry[],
-  commanderIdentity: string[] | null = null,
+  commander: CommanderInfo | null = null,
 ): LegalityReport => {
   const rules = rulesFor(format);
   const deckSize = entries.reduce((sum, e) => sum + e.qty, 0);
   const violations: Violation[] = [];
+  const commanderIdentity = commander?.colorIdentity ?? null;
 
   if (deckSize < rules.minDeckSize) {
     violations.push({ type: 'SIZE', cardName: null, detail: `Deck has ${deckSize} cards; ${rules.label} needs at least ${rules.minDeckSize}` });
   }
   if (rules.maxDeckSize != null && deckSize > rules.maxDeckSize) {
     violations.push({ type: 'SIZE', cardName: null, detail: `Deck has ${deckSize} cards; ${rules.label} allows at most ${rules.maxDeckSize}` });
+  }
+
+  if (rules.requiresCommander) {
+    const name = commander?.name?.trim() ?? '';
+    if (!name) {
+      violations.push({ type: 'COMMANDER', cardName: null, detail: 'This format requires a commander' });
+    } else if (commander && commander.eligible === false) {
+      // Authoritative Scryfall verdict; null (unresolved/loading/offline) skips the check.
+      violations.push({ type: 'COMMANDER', cardName: name, detail: "This card can't be a commander" });
+    }
   }
 
   for (const e of entries) {

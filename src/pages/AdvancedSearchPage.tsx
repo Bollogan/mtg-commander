@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Col, Container, Form, Row } from 'react-bootstrap';
 import { motion } from 'framer-motion';
 import { CardGrid } from '../components/CardGrid';
+import { ManaSymbol } from '../components/ManaCost';
 import { searchCards, type SearchResponse } from '../services/scryfallApi';
 
 // ─── Scryfall query builder ───────────────────────────────────────────────────
@@ -31,7 +32,8 @@ const EMPTY: Filters = {
   cmc: '', cmcOp: '>=', set: '', oracle: '', format: '', raw: '',
 };
 
-const COLOR_MAP: Record<string, string> = { W: '⚪', U: '🔵', B: '⚫', R: '🔴', G: '🟢', C: '◇' };
+// Colour filter buttons — rendered with the official Magic mana symbols (sprite), not emoji.
+const COLOR_KEYS = ['W', 'U', 'B', 'R', 'G', 'C'];
 
 const buildQuery = (f: Filters): string => {
   const parts: string[] = [];
@@ -117,7 +119,7 @@ export const AdvancedSearchPage = () => {
             <Form.Label className="filter-label">{t('advSearch.colors')}</Form.Label>
             <div className="d-flex flex-wrap gap-2 align-items-center">
               <div className="color-toggle-group" role="group" aria-label={t('advSearch.colors')}>
-                {Object.keys(COLOR_MAP).map((c) => (
+                {COLOR_KEYS.map((c) => (
                   <button
                     type="button"
                     key={c}
@@ -126,7 +128,7 @@ export const AdvancedSearchPage = () => {
                     onClick={() => toggleColor(c)}
                     title={c}
                   >
-                    {COLOR_MAP[c]}
+                    <ManaSymbol token={c} size={20} />
                   </button>
                 ))}
               </div>

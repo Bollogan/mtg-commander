@@ -341,6 +341,18 @@ export const fetchPrintings = createAsyncThunk('deck/fetchPrintings', async (nam
   return data;
 });
 
+// Scryfall's authoritative is:commander verdict for a named card (null = couldn't resolve).
+export const fetchCommanderEligible = createAsyncThunk(
+  'deck/fetchCommanderEligible',
+  async (name: string) => {
+    const { data } = await apiClient.get<{ eligible: boolean | null }>(
+      '/api/decks/cards/commander-eligible',
+      { params: { name } },
+    );
+    return data.eligible;
+  },
+);
+
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
 const toDeckCard = (c: ScryfallCard): DeckCard => ({

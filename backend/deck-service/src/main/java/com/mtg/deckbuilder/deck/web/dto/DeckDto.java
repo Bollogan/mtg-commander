@@ -30,11 +30,11 @@ public record DeckDto(
     Instant updatedAt) {
 
   public static DeckDto from(Deck deck, String ownerName, String ownerAvatarUrl, UUID requesterId,
-      Map<String, ScryfallCard.Prices> pricesById) {
+      Map<String, ScryfallCard> cardsById) {
     List<UUID> likedBy = deck.getLikedBy();
     int likes = likedBy == null ? 0 : likedBy.size();
     boolean liked = requesterId != null && likedBy != null && likedBy.contains(requesterId);
-    Map<String, ScryfallCard.Prices> prices = pricesById == null ? Map.of() : pricesById;
+    Map<String, ScryfallCard> cards = cardsById == null ? Map.of() : cardsById;
     return new DeckDto(
         deck.getId(),
         deck.getOwnerId(),
@@ -46,7 +46,7 @@ public record DeckDto(
         deck.getDescription(),
         deck.getCommanderName(),
         deck.getCards().stream()
-            .map(c -> DeckCardDto.from(c, prices.get(c.getScryfallId())))
+            .map(c -> DeckCardDto.from(c, cards.get(c.getScryfallId())))
             .toList(),
         deck.getCategories().stream().map(DeckCategoryDto::from).toList(),
         deck.getStats(),
