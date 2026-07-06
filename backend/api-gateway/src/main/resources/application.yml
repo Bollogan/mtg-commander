@@ -70,7 +70,7 @@ spring:
         - id: forum-service
           uri: lb://forum-service
           predicates:
-            - Path=/api/forums/**,/api/posts/**,/api/events/**
+            - Path=/api/forums/**,/api/posts/**,/api/comments/**,/api/events/**
           filters:
             - name: CircuitBreaker
               args:

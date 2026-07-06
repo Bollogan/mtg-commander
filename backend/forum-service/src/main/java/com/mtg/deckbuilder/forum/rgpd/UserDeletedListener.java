@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mtg.deckbuilder.forum.repo.CommentRepository;
 import com.mtg.deckbuilder.forum.repo.PostRepository;
 import com.mtg.deckbuilder.forum.repo.ThreadRepository;
+import com.mtg.deckbuilder.forum.repo.VoteRepository;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,15 +22,18 @@ public class UserDeletedListener implements MessageListener {
     private final ThreadRepository threadRepository;
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
+    private final VoteRepository voteRepository;
     private final ObjectMapper objectMapper;
 
     public UserDeletedListener(ThreadRepository threadRepository,
                                PostRepository postRepository,
                                CommentRepository commentRepository,
+                               VoteRepository voteRepository,
                                ObjectMapper objectMapper) {
         this.threadRepository = threadRepository;
         this.postRepository = postRepository;
         this.commentRepository = commentRepository;
+        this.voteRepository = voteRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -44,8 +48,9 @@ public class UserDeletedListener implements MessageListener {
             long comments = commentRepository.deleteByAuthorId(userId);
             long posts = postRepository.deleteByAuthorId(userId);
             long threads = threadRepository.deleteByAuthorId(userId);
-            log.info("USER_DELETED: removed {} threads, {} posts, {} comments for {}",
-                threads, posts, comments, userId);
+            long votes = voteRepository.deleteByUserId(userId);
+            log.info("USER_DELETED: removed {} threads, {} posts, {} comments, {} votes for {}",
+                threads, posts, comments, votes, userId);
         } catch (Exception e) {
             log.error("Failed to process user event: {}", e.getMessage());
         }

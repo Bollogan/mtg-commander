@@ -16,6 +16,16 @@ spring:
 notifications:
   channel: ${NOTIFICATIONS_CHANNEL:notifications}
 
+forum:
+  activity-score:
+    # Recompute every forum's weeklyActivityScore hourly (spec §2.2). Cron: sec min hour * * *
+    cron: ${FORUM_ACTIVITY_SCORE_CRON:0 0 * * * *}
+  events:
+    # Redis Pub/Sub channel for realtime forum events fanned out over SSE (Phase 6, spec §7.2).
+    channel: ${FORUM_EVENTS_CHANNEL:forum-events}
+    # How long an idle SSE connection is held open before the client reconnects.
+    sse-timeout-ms: ${FORUM_EVENTS_SSE_TIMEOUT_MS:3600000}
+
 eureka:
   client:
     serviceUrl:

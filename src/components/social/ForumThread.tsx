@@ -1,85 +1,117 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Button, Container } from 'react-bootstrap';
+import { useTranslation } from 'react-i18next';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { createPost, fetchPosts } from '../../features/forum/forumSlice';
-import { CommentList } from './CommentList';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
+import { fetchMyPermissions, fetchPosts, votePost, type Thread } from '../../features/forum/forumSlice';
+import { useForumStream } from '../../features/forum/useForumStream';
+import { CreatePostModal } from './forum/CreatePostModal';
+import { CardText } from './forum/CardText';
+import { VoteWidget } from './forum/VoteWidget';
 
-/** A forum thread: its posts (newest first), a new-post form, and per-post comment threads. */
+/** A forum board: the list of its topics (Posts), each linking to its own page, plus a New-post CTA. */
 export function ForumThread() {
   const { id } = useParams<{ id: string }>();
   const dispatch = useAppDispatch();
+  const { t } = useTranslation();
   const posts = useAppSelector((s) => (id ? s.forum.posts[id] ?? [] : []));
   const isAuthenticated = useAppSelector((s) => Boolean(s.auth.token));
-  const [expanded, setExpanded] = useState<string | null>(null);
-  const [title, setTitle] = useState('');
-  const [body, setBody] = useState('');
+  const perms = useAppSelector((s) => (id ? s.forum.permissions[id] : undefined));
+  const streamConnected = useAppSelector((s) => s.forum.streamConnected);
+  // Best-effort forum name for the tab title: look it up in any list we've already loaded.
+  const forumName = useAppSelector((s) => {
+    if (!id) return null;
+    const pools: Thread[] = [
+      ...s.forum.threads,
+      ...(s.forum.rails ? [...s.forum.rails.trending, ...s.forum.rails.rising, ...s.forum.rails.newest] : []),
+      ...(s.forum.search?.items ?? []),
+    ];
+    return pools.find((f) => f.id === id)?.title ?? null;
+  });
+
+  const [showCreate, setShowCreate] = useState(false);
+
+  useDocumentTitle(forumName ?? t('forums.title', 'The Forums'));
+  useForumStream(id);
 
   useEffect(() => {
-    if (id) dispatch(fetchPosts(id));
-  }, [dispatch, id]);
+    if (id) {
+      dispatch(fetchPosts(id));
+      if (isAuthenticated) dispatch(fetchMyPermissions(id));
+    }
+  }, [dispatch, id, isAuthenticated]);
 
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!id || !title.trim() || !body.trim()) return;
-    dispatch(createPost({ threadId: id, title: title.trim(), body: body.trim() }));
-    setTitle('');
-    setBody('');
-  };
+  if (!id) return null;
 
   return (
     <Container className="page-container content-narrow">
-      <Link to="/forums" className="back-link">← Back to forums</Link>
+      <div className="d-flex justify-content-between align-items-center">
+        <Link to="/forums" className="back-link">← {t('forums.back', 'Back to forums')}</Link>
+        <div className="d-flex align-items-center gap-2">
+          {streamConnected && (
+            <span className="live-pill" title={t('forums.liveOn', 'Live updates on')}>
+              <span className="live-pill__dot" /> {t('forums.live', 'Live')}
+            </span>
+          )}
+          {perms?.canModerate && (
+            <Link to={`/forums/${id}/moderate`} className="btn btn-sm btn-outline-secondary">
+              🛡️ {t('forums.moderate', 'Moderation')}
+            </Link>
+          )}
+        </div>
+      </div>
 
-      {isAuthenticated && (
-        <form onSubmit={submit} className="deck-card p-3 my-3">
-          <h2 className="h6 mb-2">New post</h2>
-          <input
-            className="form-control mb-2"
-            placeholder="Title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-          <textarea
-            className="form-control mb-3"
-            placeholder="Share your thoughts…"
-            rows={3}
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-          />
-          <Button type="submit" size="sm" disabled={!title.trim() || !body.trim()}>
-            Publish
+      <div className="forum-board__bar">
+        <h2 className="forum-board__title">{forumName ?? t('forums.title', 'The Forums')}</h2>
+        {isAuthenticated && (
+          <Button className="forum-hero__cta" size="sm" onClick={() => setShowCreate(true)}>
+            + {t('forums.newPost', 'New post')}
           </Button>
-        </form>
-      )}
+        )}
+      </div>
 
-      {posts.length === 0 && (
+      {posts.length === 0 ? (
         <div className="grid-empty">
           <span className="grid-empty__glyph" aria-hidden="true">✦</span>
-          <p className="mb-0">No posts yet. Be the first to write one.</p>
+          <p className="mb-0">{t('forums.noPosts', 'No posts yet. Be the first to write one.')}</p>
         </div>
+      ) : (
+        <ul className="post-list">
+          {posts.map((p) => (
+            <li key={p.id} className="deck-card post-row">
+              <VoteWidget
+                score={p.score}
+                myVote={p.myVote}
+                disabled={!isAuthenticated}
+                onVote={(value) => dispatch(votePost({ postId: p.id, value }))}
+              />
+              <div className="post-row__main">
+                <Link to={`/forums/${id}/posts/${p.id}`} className="post-row__title">
+                  <CardText text={p.title} interactive={false} />
+                  {p.moderationStatus === 'PENDING' && (
+                    <span className="badge-pending" title={t('forums.pendingReview', 'Pending review')}>
+                      ⏳ {t('forums.pending', 'Pending')}
+                    </span>
+                  )}
+                </Link>
+                <p className="post-row__excerpt"><CardText text={p.excerpt} /></p>
+                <div className="post-row__meta">
+                  {t('forums.by', 'by')} <Link to={`/users/${p.authorId}`}>{p.authorName}</Link>
+                  {' · '}
+                  <span>{new Date(p.createdAt).toLocaleString()}</span>
+                  {' · '}
+                  <Link to={`/forums/${id}/posts/${p.id}`} className="post-row__comments">
+                    💬 {p.commentCount} {t('forums.comments', 'comments')}
+                  </Link>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
       )}
 
-      {posts.map((p) => (
-        <article key={p.id} className="deck-card post-card">
-          <div className="post-head">
-            <h3 className="post-title">{p.title}</h3>
-            <span className="post-time">{new Date(p.createdAt).toLocaleString()}</span>
-          </div>
-          <div className="post-author">
-            by <Link to={`/users/${p.authorId}`}>{p.authorName}</Link>
-          </div>
-          <p className="post-body">{p.body}</p>
-          <button
-            type="button"
-            className="btn btn-link btn-sm px-0 mt-2"
-            onClick={() => setExpanded(expanded === p.id ? null : p.id)}
-          >
-            {expanded === p.id ? 'Hide' : 'Show'} comments ({p.commentCount})
-          </button>
-          {expanded === p.id && <CommentList postId={p.id} />}
-        </article>
-      ))}
+      <CreatePostModal threadId={id} show={showCreate} onHide={() => setShowCreate(false)} />
     </Container>
   );
 }

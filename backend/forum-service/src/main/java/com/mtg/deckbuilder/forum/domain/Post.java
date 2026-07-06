@@ -1,16 +1,26 @@
 package com.mtg.deckbuilder.forum.domain;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 /**
  * A post within a {@link Thread}. {@code authorName}/{@code authorAvatar} are denormalised
  * at write time (enriched from user-service via Feign) to keep reads free of N+1 lookups.
+ *
+ * <p>Moderation fields are additive (default {@link ModerationStatus#APPROVED}) so pre-existing
+ * documents keep deserialising; only APPROVED posts are shown publicly (Phase 4).
  */
 @Document(collection = "posts")
+// Covers the hot paths: public listing (threadId+visible, newest first) and the moderation queue
+// (threadId+status, newest first) — see PostService.listByThread / ModerationQueueService (Phase 7).
+@CompoundIndex(name = "post_forum_status_created",
+    def = "{'threadId': 1, 'moderationStatus': 1, 'createdAt': -1}")
 public class Post {
 
     @Id
@@ -29,6 +39,17 @@ public class Post {
     private String body;
 
     private long commentCount;
+
+    /** Denormalised vote tallies; the net score (upvotes − downvotes) drives ranking/display. */
+    private long upvotes;
+    private long downvotes;
+
+    /** Moderation lifecycle; PENDING/REJECTED posts are held from public listings (Phase 4). */
+    @Indexed
+    private ModerationStatus moderationStatus = ModerationStatus.APPROVED;
+    /** Signals raised by the auto-moderator or user reports — surfaced in the moderation queue. */
+    private List<ModerationFlag> moderationFlags = new ArrayList<>();
+    private String rejectionReason;
 
     @Indexed
     private Instant createdAt;
@@ -95,6 +116,46 @@ public class Post {
 
     public void setCommentCount(long commentCount) {
         this.commentCount = commentCount;
+    }
+
+    public long getUpvotes() {
+        return upvotes;
+    }
+
+    public void setUpvotes(long upvotes) {
+        this.upvotes = upvotes;
+    }
+
+    public long getDownvotes() {
+        return downvotes;
+    }
+
+    public void setDownvotes(long downvotes) {
+        this.downvotes = downvotes;
+    }
+
+    public ModerationStatus getModerationStatus() {
+        return moderationStatus;
+    }
+
+    public void setModerationStatus(ModerationStatus moderationStatus) {
+        this.moderationStatus = moderationStatus;
+    }
+
+    public List<ModerationFlag> getModerationFlags() {
+        return moderationFlags;
+    }
+
+    public void setModerationFlags(List<ModerationFlag> moderationFlags) {
+        this.moderationFlags = moderationFlags;
+    }
+
+    public String getRejectionReason() {
+        return rejectionReason;
+    }
+
+    public void setRejectionReason(String rejectionReason) {
+        this.rejectionReason = rejectionReason;
     }
 
     public Instant getCreatedAt() {
