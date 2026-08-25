@@ -55,6 +55,16 @@ export interface TopCommander {
   deckCount: number;
 }
 
+/**
+ * One recommander.cards "apartado". `id` is stable (`top`, `creatures`, … `utility-lands`) and is
+ * what the UI keys its translated label and icon off; `label` is the English fallback.
+ */
+export interface RecommanderCategory {
+  id: string;
+  label: string;
+  cards: Card[];
+}
+
 interface EdhrecCardview {
   id: string;
   name?: string;
@@ -178,6 +188,30 @@ export const fetchTopCommanders = async (limit = 20): Promise<TopCommander[]> =>
     return response.data || [];
   } catch (error) {
     console.error('Error fetching top commanders from Scryfall:', error);
+    return [];
+  }
+};
+
+/**
+ * Recommendations for a commander already split into recommander.cards' apartados (Top Picks,
+ * Creatures, Artifacts, Enchantments, Instants, Sorceries, Planeswalkers, Battles, Utility Lands,
+ * Lands). Empty categories are omitted by the backend.
+ */
+export const fetchRecommanderCategories = async (
+  commander: string,
+  perCategory = 50
+): Promise<RecommanderCategory[]> => {
+  if (!commander) {
+    return [];
+  }
+  try {
+    const response = await axios.get<RecommanderCategory[]>(
+      `${API_BASE}/api/scryfall/recommander/categories`,
+      { params: { commander, perCategory } }
+    );
+    return response.data || [];
+  } catch (error) {
+    console.error('Error fetching recommander categories:', error);
     return [];
   }
 };

@@ -28,6 +28,7 @@ public class ScryfallClient {
   // v2: cache entries now also carry Scryfall prices; the bump ignores older price-less entries.
   private static final String CARD_KEY = "scryfall:card:v2:";
   private static final String NAME_KEY = "scryfall:named:";
+  private static final String FUZZY_KEY = "scryfall:fuzzy:";
   private static final String SEARCH_KEY = "scryfall:search:";
   private static final String AUTOCOMPLETE_KEY = "scryfall:autocomplete:";
   private static final String COMMANDER_AUTOCOMPLETE_KEY = "scryfall:commander-autocomplete:v2:";
@@ -106,6 +107,137 @@ public class ScryfallClient {
       log.warn("Scryfall getCardByName('{}') failed: {}", name, e.getMessage());
       return null;
     }
+  }
+
+  /**
+   * Resolve a card from a name that may be misspelled, abbreviated or carry an extra face
+   * ("Delver of Secrets // Insectile Aberration"), using Scryfall's fuzzy matcher. Used by the
+   * decklist importer, where names come from arbitrary third-party exports. Falls back to the
+   * exact lookup so a name Scryfall considers ambiguous still resolves when it is spelled in full.
+   */
+  public ScryfallCard getCardByFuzzyName(String name) {
+    if (name == null || name.isBlank()) {
+      return null;
+    }
+    String query = frontFaceOf(name.trim());
+    String cacheKey = FUZZY_KEY + query.toLowerCase();
+    ScryfallCard cached = readCard(cacheKey);
+    if (cached != null) {
+      return cached;
+    }
+    try {
+      JsonNode raw = webClient.get()
+          .uri(uri -> uri.path("/cards/named").queryParam("fuzzy", query).build())
+          // 404 = no match, 400 = too ambiguous. Both are "unresolved", not transport failures.
+          .retrieve()
+          .onStatus(status -> status.value() == 404 || status.value() == 400, resp -> Mono.empty())
+          .bodyToMono(JsonNode.class)
+          .timeout(REQUEST_TIMEOUT)
+          .block();
+      ScryfallCard card = cardMapper.map(raw);
+      if (card == null) {
+        return getCardByName(query);
+      }
+      writeJson(cacheKey, card);
+      return card;
+    } catch (RuntimeException e) {
+      log.warn("Scryfall getCardByFuzzyName('{}') failed: {}", name, e.getMessage());
+      return null;
+    }
+  }
+
+  /**
+   * Resolve many cards by exact name in as few Scryfall calls as possible (75 per
+   * {@code /cards/collection} request), read-through cached per name. Names Scryfall cannot match
+   * are simply absent from the result; the caller decides how to report them.
+   *
+   * <p>This is what makes importing a 100-card decklist one or two upstream calls instead of a
+   * hundred sequential ones.
+   */
+  public Map<String, ScryfallCard> getCardsByNames(List<String> names) {
+    Map<String, ScryfallCard> result = new LinkedHashMap<>();
+    if (names == null || names.isEmpty()) {
+      return result;
+    }
+    List<String> misses = new ArrayList<>();
+    for (String name : names.stream().filter(n -> n != null && !n.isBlank()).distinct().toList()) {
+      String key = name.trim().toLowerCase();
+      ScryfallCard cached = readCard(NAME_KEY + key);
+      if (cached != null) {
+        result.put(key, cached);
+      } else {
+        misses.add(name.trim());
+      }
+    }
+    for (List<String> batch : partition(misses, 75)) {
+      fetchCollectionByName(batch).forEach((requested, card) -> {
+        writeJson(NAME_KEY + requested.toLowerCase(), card);
+        writeJson(CARD_KEY + card.id(), card);
+        result.put(requested.toLowerCase(), card);
+      });
+    }
+    return result;
+  }
+
+  /**
+   * Scryfall answers a name collection with the matched cards (in request order) plus a
+   * {@code not_found} list, so the reply is paired back to the requested names by matching on the
+   * card's own name first and falling back to request order for the rest (a requested name can
+   * differ from the printed name: "Delver of Secrets" resolves to the full double-faced name).
+   */
+  private Map<String, ScryfallCard> fetchCollectionByName(List<String> batch) {
+    Map<String, ScryfallCard> map = new LinkedHashMap<>();
+    if (batch.isEmpty()) {
+      return map;
+    }
+    try {
+      List<Map<String, String>> identifiers = batch.stream()
+          .map(name -> Map.<String, String>of("name", frontFaceOf(name)))
+          .toList();
+      JsonNode response = webClient.post()
+          .uri("/cards/collection")
+          .bodyValue(Map.of("identifiers", identifiers))
+          .retrieve()
+          .bodyToMono(JsonNode.class)
+          .timeout(REQUEST_TIMEOUT)
+          .block();
+      if (response == null || !response.path("data").isArray()) {
+        return map;
+      }
+      List<ScryfallCard> found = new ArrayList<>();
+      for (JsonNode raw : response.path("data")) {
+        ScryfallCard card = cardMapper.map(raw);
+        if (card != null) {
+          found.add(card);
+        }
+      }
+      List<ScryfallCard> unclaimed = new ArrayList<>(found);
+      for (String requested : batch) {
+        String wanted = frontFaceOf(requested).toLowerCase();
+        ScryfallCard match = unclaimed.stream()
+            .filter(c -> c.name() != null
+                && (c.name().toLowerCase().equals(wanted)
+                    || frontFaceOf(c.name()).toLowerCase().equals(wanted)))
+            .findFirst()
+            .orElse(null);
+        if (match != null) {
+          unclaimed.remove(match);
+          map.put(requested, match);
+        }
+      }
+    } catch (RuntimeException e) {
+      log.warn("Scryfall name collection batch failed: {}", e.getMessage());
+    }
+    return map;
+  }
+
+  /**
+   * The front face of a double-faced name: Scryfall matches "Delver of Secrets" but not always
+   * the full "Delver of Secrets // Insectile Aberration" that exports print.
+   */
+  private static String frontFaceOf(String name) {
+    int split = name.indexOf("//");
+    return split > 0 ? name.substring(0, split).trim() : name;
   }
 
   /** Resolve a list of card ids, hitting Redis first and batching the misses. */

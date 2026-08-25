@@ -18,7 +18,9 @@ import com.mtg.deckbuilder.deck.web.dto.DeckRequest;
 import com.mtg.deckbuilder.deck.web.dto.DeckSummaryDto;
 import com.mtg.deckbuilder.deck.web.dto.SuggestionDto;
 import jakarta.validation.Valid;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -159,12 +161,71 @@ public class DeckController {
     return scryfallClient.autocomplete(query, limit, commanderOnly);
   }
 
+  /**
+   * Resolve one card by name. {@code exact} demands the printed name; {@code fuzzy} tolerates the
+   * spelling variations that arrive in pasted decklists. Exactly one of the two must be supplied.
+   */
   @GetMapping("/cards/named")
   public ResponseEntity<ScryfallCard> getCardByName(
-      @RequestParam("exact") String exactName) {
-    ScryfallCard card = scryfallClient.getCardByName(exactName);
+      @RequestParam(value = "exact", required = false) String exactName,
+      @RequestParam(value = "fuzzy", required = false) String fuzzyName) {
+    boolean hasExact = exactName != null && !exactName.isBlank();
+    boolean hasFuzzy = fuzzyName != null && !fuzzyName.isBlank();
+    if (hasExact == hasFuzzy) {
+      return ResponseEntity.badRequest().build();
+    }
+    ScryfallCard card = hasExact
+        ? scryfallClient.getCardByName(exactName)
+        : scryfallClient.getCardByFuzzyName(fuzzyName);
     return card == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(card);
   }
+
+  /**
+   * Bulk name resolution for the decklist importer: takes the names of a whole decklist and
+   * answers with the cards it could resolve plus the names it could not, in one round trip
+   * instead of one request per line.
+   */
+  @PostMapping("/cards/named-collection")
+  public ResolvedNamesResponse resolveNames(@RequestBody CardNamesRequest request) {
+    List<String> names = request.names() == null ? List.of() : request.names();
+    if (names.isEmpty()) {
+      return new ResolvedNamesResponse(List.of(), List.of());
+    }
+    // Guard against a pathological paste; a Commander decklist has ~100 distinct names.
+    List<String> requested = names.stream()
+        .filter(n -> n != null && !n.isBlank())
+        .map(String::trim)
+        .distinct()
+        .limit(500)
+        .toList();
+
+    Map<String, ScryfallCard> byName = scryfallClient.getCardsByNames(requested);
+    List<ResolvedCard> resolved = new ArrayList<>();
+    List<String> unresolved = new ArrayList<>();
+    for (String name : requested) {
+      ScryfallCard card = byName.get(name.toLowerCase());
+      // A name the bulk endpoint missed is usually a spelling variant — retry it fuzzily, which
+      // is cheap because only the leftovers get an individual request.
+      if (card == null) {
+        card = scryfallClient.getCardByFuzzyName(name);
+      }
+      if (card == null) {
+        unresolved.add(name);
+      } else {
+        resolved.add(new ResolvedCard(name, card));
+      }
+    }
+    return new ResolvedNamesResponse(resolved, unresolved);
+  }
+
+  /** Names to resolve, as parsed from a pasted decklist. */
+  public record CardNamesRequest(List<String> names) {}
+
+  /** A resolved line: the name as written in the list, and the card it resolved to. */
+  public record ResolvedCard(String requested, ScryfallCard card) {}
+
+  /** Bulk resolution outcome — everything found, plus the names that matched nothing. */
+  public record ResolvedNamesResponse(List<ResolvedCard> resolved, List<String> unresolved) {}
 
   @GetMapping("/cards/{scryfallId}")
   public ResponseEntity<ScryfallCard> getCard(@PathVariable String scryfallId) {

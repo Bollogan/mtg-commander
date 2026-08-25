@@ -153,7 +153,10 @@ export const groupCards = (
     };
   });
 
-  if (commanderCard && groupBy === 'category') {
+  // The commander lives in its own zone rather than in `cards`, so it is prepended for every
+  // grouping — otherwise switching to "group by type" (or having a deck that is *only* the
+  // commander) made it vanish from the view entirely.
+  if (commanderCard) {
     ordered.unshift({
       key: 'Commander',
       cards: [commanderCard],

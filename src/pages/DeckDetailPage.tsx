@@ -139,7 +139,7 @@ export const DeckDetailPage = () => {
               {deck.description && <p className="mt-2">{deck.description}</p>}
             </div>
             <Stack direction="horizontal" gap={2}>
-              <Button variant="outline-info" onClick={() => navigate(`/play?deckId=${deck.id}`)}>
+              <Button variant="outline-info" onClick={() => navigate(`/decks/${deck.id}/playtest`)}>
                 {t('builder.playtest', 'Playtest')}
               </Button>
               {currentUserId && currentUserId === deck.ownerId && (
@@ -164,7 +164,7 @@ export const DeckDetailPage = () => {
       />
 
       <div className="builder-canvas">
-        {deck.cards.length === 0 ? (
+        {deck.cards.length === 0 && !viewProps.commanderCard ? (
           <div className="builder-empty">
             <span className="builder-empty__glyph" aria-hidden="true">✦</span>
             <p>{t('builder.empty')}</p>

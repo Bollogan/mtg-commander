@@ -4,6 +4,7 @@ import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
   createComment, fetchComments, voteComment, type Comment,
 } from '../../features/forum/forumSlice';
+import { forumErrorMessage } from '../../features/forum/forumErrorMessage';
 import { ReportButton } from './forum/ReportButton';
 import { CardText } from './forum/CardText';
 import { VoteWidget } from './forum/VoteWidget';
@@ -158,10 +159,7 @@ function CommentForm({ postId, parentCommentId, placeholderKey, onDone }: FormPr
         onDone?.();
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      setNotice(message.includes('422')
-        ? t('forums.commentRejected', 'Your comment was rejected by moderation.')
-        : t('forums.postError', 'Could not publish. Try again.'));
+      setNotice(forumErrorMessage(t, err, 'comment'));
     } finally {
       setPending(false);
     }

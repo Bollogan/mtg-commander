@@ -409,6 +409,29 @@ const deckSlice = createSlice({
         state.draft.cards.push(toDeckCard(action.payload));
       }
     },
+    /**
+     * Bulk insert used by the decklist importer: adds every entry with its own quantity and
+     * category in a single action, instead of one dispatch per copy (a 100-card list used to
+     * fire hundreds of actions and re-render the builder for each one).
+     */
+    addCardsToDraft(
+      state,
+      action: PayloadAction<{ card: ScryfallCard; qty: number; category?: string | null }[]>,
+    ) {
+      for (const entry of action.payload) {
+        const qty = Math.max(1, Math.floor(entry.qty));
+        const existing = state.draft.cards.find((c) => c.scryfallId === entry.card.id);
+        if (existing) {
+          existing.qty += qty;
+          if (entry.category) existing.category = entry.category;
+        } else {
+          const card = toDeckCard(entry.card);
+          card.qty = qty;
+          card.category = entry.category ?? null;
+          state.draft.cards.push(card);
+        }
+      }
+    },
     changeQty(state, action: PayloadAction<{ scryfallId: string; delta: number }>) {
       const card = state.draft.cards.find((c) => c.scryfallId === action.payload.scryfallId);
       if (!card) return;
@@ -592,6 +615,7 @@ export const {
   newDraft,
   setDraftMeta,
   addCardToDraft,
+  addCardsToDraft,
   changeQty,
   removeCardFromDraft,
   setCardCategory,

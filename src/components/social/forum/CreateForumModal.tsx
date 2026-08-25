@@ -3,6 +3,7 @@ import { Button, Form, Modal } from 'react-bootstrap';
 import { useTranslation } from 'react-i18next';
 import { useAppDispatch } from '../../../store/hooks';
 import { createThread, type CreateForumInput } from '../../../features/forum/forumSlice';
+import { forumErrorMessage } from '../../../features/forum/forumErrorMessage';
 
 const CATEGORIES = ['GENERAL', 'DECK_DISCUSSION', 'RULES', 'TRADE', 'LORE', 'CUSTOM'];
 const LANGUAGES = ['es', 'en', 'pt', 'fr', 'de', 'it'];
@@ -40,11 +41,7 @@ export function CreateForumModal({ show, onHide }: Props) {
         onHide();
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      // Moderation rejections surface as a 422 from the backend.
-      setError(message.includes('422')
-        ? t('forums.moderationRejected', 'Your forum was rejected by moderation. Please revise the name/description.')
-        : t('forums.createError', 'Could not create the forum. Try again.'));
+      setError(forumErrorMessage(t, err, 'forum'));
     } finally {
       setPending(false);
     }

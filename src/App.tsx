@@ -30,6 +30,9 @@ const PostDetailPage = lazy(() =>
   import('./components/social/PostDetailPage').then((m) => ({ default: m.PostDetailPage })));
 const ForumModerationPage = lazy(() =>
   import('./components/social/forum/ForumModerationPage').then((m) => ({ default: m.ForumModerationPage })));
+// The solo playtester pulls in its own board + odds code; keep it out of the main bundle.
+const PlaytestPage = lazy(() =>
+  import('./pages/PlaytestPage').then((m) => ({ default: m.PlaytestPage })));
 
 function RouteFallback() {
   return <div className="route-fallback" aria-busy="true"><span className="route-spinner" /></div>;
@@ -52,6 +55,9 @@ function App() {
           <Route path="/decks/:id" element={<DeckDetailPage />} />
           <Route path="/decks/build" element={<RequireAuth><DeckBuilderPage /></RequireAuth>} />
           <Route path="/decks/build/:id" element={<RequireAuth><DeckBuilderPage /></RequireAuth>} />
+          <Route path="/decks/:id/playtest" element={
+            <Suspense fallback={<RouteFallback />}><PlaytestPage /></Suspense>
+          } />
           <Route path="/play" element={<RequireAuth><GameSimulatorPage /></RequireAuth>} />
           <Route path="/play/:roomId" element={<RequireAuth><GameSimulatorPage /></RequireAuth>} />
           <Route path="/events" element={<EventsPage />} />

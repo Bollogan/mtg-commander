@@ -3,6 +3,7 @@ import { Button, Form, Modal } from 'react-bootstrap';
 import { useTranslation } from 'react-i18next';
 import { useAppDispatch } from '../../../store/hooks';
 import { createPost } from '../../../features/forum/forumSlice';
+import { forumErrorMessage } from '../../../features/forum/forumErrorMessage';
 
 interface Props {
   threadId: string;
@@ -47,10 +48,7 @@ export function CreatePostModal({ threadId, show, onHide }: Props) {
         close();
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      setError(message.includes('422')
-        ? t('forums.postRejected', 'Your post was rejected by moderation.')
-        : t('forums.postError', 'Could not publish. Try again.'));
+      setError(forumErrorMessage(t, err, 'post'));
     } finally {
       setPending(false);
     }

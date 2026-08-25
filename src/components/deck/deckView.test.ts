@@ -59,6 +59,24 @@ describe('groupCards', () => {
     const groups = groupCards(cards, 'type', 'name');
     expect(groups[0].count).toBe(3);
   });
+
+  it('shows the commander whatever the cards are grouped by', () => {
+    const commander = card('Atraxa', 'Legendary Creature — Angel', 4, 1);
+    const cards = [card('Forest', 'Basic Land — Forest', 0, 1)];
+
+    expect(groupCards(cards, 'category', 'name', [], commander).map((g) => g.key))
+      .toEqual(['Commander', 'Land']);
+    // Grouping by type used to drop it, which hid the commander from half the views.
+    expect(groupCards(cards, 'type', 'name', [], commander).map((g) => g.key))
+      .toEqual(['Commander', 'Land']);
+  });
+
+  it('still renders a deck that holds nothing but its commander', () => {
+    const commander = card('Atraxa', 'Legendary Creature — Angel', 4, 1);
+    const groups = groupCards([], 'category', 'name', [], commander);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]).toMatchObject({ key: 'Commander', count: 1 });
+  });
 });
 
 describe('sortCards', () => {

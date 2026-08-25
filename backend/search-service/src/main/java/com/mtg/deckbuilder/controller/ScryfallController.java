@@ -3,6 +3,7 @@ package com.mtg.deckbuilder.controller;
 import com.mtg.deckbuilder.dto.CardDto;
 import com.mtg.deckbuilder.dto.CardIdRequestDto;
 import com.mtg.deckbuilder.dto.EdhrecCategoryDto;
+import com.mtg.deckbuilder.dto.RecommanderCategoryDto;
 import com.mtg.deckbuilder.dto.SearchResponseDto;
 import com.mtg.deckbuilder.dto.TopCommanderDto;
 import com.mtg.deckbuilder.service.RecommanderService;
@@ -70,5 +71,16 @@ public class ScryfallController {
     public List<CardDto> recommander(@RequestParam("commander") String commander,
         @RequestParam(value = "limit", defaultValue = "20") int limit) {
       return recommanderService.recommendForCommander(commander, limit);
+    }
+
+    /**
+     * The same recommendations split into recommander.cards' apartados (Top Picks, Creatures,
+     * Artifacts, …, Utility Lands, Lands), capped at {@code perCategory} cards each.
+     */
+    @GetMapping("/recommander/categories")
+    public List<RecommanderCategoryDto> recommanderCategories(
+        @RequestParam("commander") String commander,
+        @RequestParam(value = "perCategory", defaultValue = "50") int perCategory) {
+      return recommanderService.recommendCategories(commander, perCategory);
     }
 }

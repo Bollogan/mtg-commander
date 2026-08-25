@@ -1,5 +1,6 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { apiClient } from '../../api/client';
+import { toApiError, type ApiErrorInfo } from '../../api/apiError';
 
 export type ModerationStatus = 'APPROVED' | 'PENDING' | 'REJECTED';
 
@@ -254,11 +255,20 @@ export const searchForums = createAsyncThunk('forum/search', async (params: Foru
   return data;
 });
 
-export const createThread = createAsyncThunk(
+/**
+ * Content-creating thunks reject with an {@link ApiErrorInfo} so the dialogs can tell the author
+ * what actually happened (moderation rejection, expired session, missing forum) instead of
+ * showing one generic "try again" for every status.
+ */
+export const createThread = createAsyncThunk<Thread, CreateForumInput, { rejectValue: ApiErrorInfo }>(
   'forum/createThread',
-  async (req: CreateForumInput) => {
-    const { data } = await apiClient.post<Thread>('/api/forums', req);
-    return data;
+  async (req, { rejectWithValue }) => {
+    try {
+      const { data } = await apiClient.post<Thread>('/api/forums', req);
+      return data;
+    } catch (error) {
+      return rejectWithValue(toApiError(error));
+    }
   },
 );
 
@@ -269,11 +279,19 @@ export const fetchPosts = createAsyncThunk('forum/fetchPosts', async (threadId: 
   return { threadId, items: data.items };
 });
 
-export const createPost = createAsyncThunk(
+export const createPost = createAsyncThunk<
+  Post,
+  { threadId: string; title: string; body: string },
+  { rejectValue: ApiErrorInfo }
+>(
   'forum/createPost',
-  async ({ threadId, title, body }: { threadId: string; title: string; body: string }) => {
-    const { data } = await apiClient.post<Post>(`/api/forums/${threadId}/posts`, { title, body });
-    return data;
+  async ({ threadId, title, body }, { rejectWithValue }) => {
+    try {
+      const { data } = await apiClient.post<Post>(`/api/forums/${threadId}/posts`, { title, body });
+      return data;
+    } catch (error) {
+      return rejectWithValue(toApiError(error));
+    }
   },
 );
 
@@ -290,13 +308,20 @@ export const fetchComments = createAsyncThunk('forum/fetchComments', async (post
   return { postId, items: data.items };
 });
 
-export const createComment = createAsyncThunk(
+export const createComment = createAsyncThunk<
+  Comment,
+  { postId: string; body: string; parentCommentId?: string | null },
+  { rejectValue: ApiErrorInfo }
+>(
   'forum/createComment',
-  async ({ postId, body, parentCommentId }:
-    { postId: string; body: string; parentCommentId?: string | null }) => {
-    const { data } = await apiClient.post<Comment>(`/api/posts/${postId}/comments`,
-      { body, parentCommentId: parentCommentId ?? null });
-    return data;
+  async ({ postId, body, parentCommentId }, { rejectWithValue }) => {
+    try {
+      const { data } = await apiClient.post<Comment>(`/api/posts/${postId}/comments`,
+        { body, parentCommentId: parentCommentId ?? null });
+      return data;
+    } catch (error) {
+      return rejectWithValue(toApiError(error));
+    }
   },
 );
 

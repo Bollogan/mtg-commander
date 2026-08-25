@@ -7,39 +7,17 @@ import { motion } from 'framer-motion';
 import {
   fetchCardById,
   fetchEdhrecCommanderCategoriesClient,
-  fetchRecommander,
+  fetchRecommanderCategories,
+  type RecommanderCategory,
 } from '../services/scryfallApi';
 import { type Card as CardType } from '../types/cardType';
 import { CardGrid } from '../components/CardGrid';
 import { PaginatedCardGrid } from '../components/PaginatedCardGrid';
 import { FlipCard } from '../components/FlipCard';
 import { ManaCost } from '../components/ManaCost';
+import { recommanderCategoryIcon, recommanderCategoryLabel } from '../utils/recommanderCategories';
 
-const PRIMARY_TYPES = ['Creature', 'Planeswalker', 'Instant', 'Sorcery', 'Artifact', 'Enchantment', 'Battle', 'Land'];
-const GROUP_ORDER = [...PRIMARY_TYPES, 'Other'];
-const MAX_PER_GROUP = 30;
-
-const TYPE_ICON: Record<string, string> = {
-  top: '⭐',
-  Creature: '🐾',
-  Instant: '⚡',
-  Sorcery: '🌀',
-  Artifact: '⚙️',
-  Enchantment: '✨',
-  Planeswalker: '🧙',
-  Battle: '⚔️',
-  Land: '⛰️',
-  Other: '🎴'
-};
-
-const primaryTypeOf = (typeLine?: string): string => {
-  const tl = (typeLine ?? '').toLowerCase();
-  if (tl.includes('land')) return 'Land';
-  for (const type of PRIMARY_TYPES) {
-    if (tl.includes(type.toLowerCase())) return type;
-  }
-  return 'Other';
-};
+const MAX_PER_CATEGORY = 50;
 
 export const CardDetailPage = () => {
   const { t } = useTranslation();
@@ -58,39 +36,22 @@ export const CardDetailPage = () => {
     return tl.includes('legendary') && (tl.includes('creature') || tl.includes('planeswalker'));
   }, [card?.type_line]);
 
-  const { data: recommander = [], isLoading: recommanderLoading } = useQuery<CardType[]>({
-    queryKey: ['recommander', card?.name],
-    queryFn: () => fetchRecommander(card?.name || '', 200),
+  // The backend mirrors recommander.cards' own apartados (Top Picks, Creatures, Artifacts,
+  // Enchantments, Instants, Sorceries, Planeswalkers, Battles, Utility Lands, Lands).
+  const { data: recommanderGroups = [], isLoading: recommanderLoading } = useQuery<RecommanderCategory[]>({
+    queryKey: ['recommander-categories', card?.name],
+    queryFn: () => fetchRecommanderCategories(card?.name || '', MAX_PER_CATEGORY),
     enabled: Boolean(card?.name) && isCommander,
     staleTime: 1000 * 60 * 30
   });
 
-  // Recommander returns a flat ranked list; group it into per-type "apartados" (≤30 each),
-  // mirroring how recommander.cards presents recommendations.
-  const recommanderGroups = useMemo(() => {
-    const groups = new Map<string, CardType[]>();
-    for (const c of recommander) {
-      const type = primaryTypeOf(c.type_line);
-      const arr = groups.get(type) ?? [];
-      if (arr.length < MAX_PER_GROUP) {
-        arr.push(c);
-        groups.set(type, arr);
-      }
-    }
-    return GROUP_ORDER
-      .filter((type) => groups.has(type))
-      .map((type) => ({ type, cards: groups.get(type) as CardType[] }));
-  }, [recommander]);
-
-  // "Top picks" = the highest-scored across all types (recommander returns score-ordered).
-  const recTopCards = useMemo(() => recommander.slice(0, MAX_PER_GROUP), [recommander]);
-
-  const displayedRec = useMemo(
-    () => (recFilter === 'top'
-      ? recTopCards
-      : recommanderGroups.find((g) => g.type === recFilter)?.cards ?? []),
-    [recFilter, recTopCards, recommanderGroups]
+  // The category set changes with the commander, so the selection is resolved rather than
+  // stored: an id that no longer exists falls back to the first apartado (Top Picks).
+  const activeRecGroup = useMemo(
+    () => recommanderGroups.find((g) => g.id === recFilter) ?? recommanderGroups[0] ?? null,
+    [recFilter, recommanderGroups]
   );
+  const displayedRec = activeRecGroup?.cards ?? [];
 
   const edhrecSlug = useMemo(() => {
     const slugify = (value: string) =>
@@ -334,36 +295,29 @@ export const CardDetailPage = () => {
             </p>
           ) : (
             <>
-              <div className="type-filter" role="tablist" aria-label={t('card.filterByType', 'Filtrar por tipo')}>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={recFilter === 'top'}
-                  className={`type-chip${recFilter === 'top' ? ' is-active' : ''}`}
-                  onClick={() => setRecFilter('top')}
-                  title={t('card.topPicks', 'Top')}
-                >
-                  <span className="type-chip__ico" aria-hidden="true">{TYPE_ICON.top}</span>
-                  <span className="type-chip__label">{t('card.topPicks', 'Top')}</span>
-                  <span className="chip-count">{recTopCards.length}</span>
-                </button>
-                {recommanderGroups.map((group) => (
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={recFilter === group.type}
-                    key={group.type}
-                    className={`type-chip${recFilter === group.type ? ' is-active' : ''}`}
-                    onClick={() => setRecFilter(group.type)}
-                    title={group.type}
-                  >
-                    <span className="type-chip__ico" aria-hidden="true">{TYPE_ICON[group.type] ?? '•'}</span>
-                    <span className="type-chip__label">{group.type}</span>
-                    <span className="chip-count">{group.cards.length}</span>
-                  </button>
-                ))}
+              <div className="type-filter" role="tablist" aria-label={t('card.filterByCategory', 'Filtrar por categoría')}>
+                {recommanderGroups.map((group) => {
+                  const label = recommanderCategoryLabel(t, group);
+                  return (
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={activeRecGroup?.id === group.id}
+                      key={group.id}
+                      className={`type-chip${activeRecGroup?.id === group.id ? ' is-active' : ''}`}
+                      onClick={() => setRecFilter(group.id)}
+                      title={label}
+                    >
+                      <span className="type-chip__ico" aria-hidden="true">
+                        {recommanderCategoryIcon(group.id)}
+                      </span>
+                      <span className="type-chip__label">{label}</span>
+                      <span className="chip-count">{group.cards.length}</span>
+                    </button>
+                  );
+                })}
               </div>
-              <PaginatedCardGrid key={recFilter} cards={displayedRec} pageSize={12} />
+              <PaginatedCardGrid key={activeRecGroup?.id} cards={displayedRec} pageSize={12} />
             </>
           )}
         </section>

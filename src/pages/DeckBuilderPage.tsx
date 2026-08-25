@@ -227,7 +227,7 @@ export const DeckBuilderPage = () => {
                       </Button>
                     )}
                     {draft.id && (
-                      <Button variant="outline-info" onClick={() => navigate(`/play?deckId=${draft.id}`)}>
+                      <Button variant="outline-info" onClick={() => navigate(`/decks/${draft.id}/playtest`)}>
                         {t('builder.playtest', 'Playtest')}
                       </Button>
                     )}
@@ -261,7 +261,7 @@ export const DeckBuilderPage = () => {
             />
 
             <div className="builder-canvas">
-              {draft.cards.length === 0 ? (
+              {draft.cards.length === 0 && !viewProps.commanderCard ? (
                 <div className="builder-empty">
                   <span className="builder-empty__glyph" aria-hidden="true">✦</span>
                   <p>{t('builder.empty')}</p>

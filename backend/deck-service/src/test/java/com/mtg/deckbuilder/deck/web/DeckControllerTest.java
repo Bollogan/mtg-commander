@@ -17,8 +17,10 @@ import com.mtg.deckbuilder.deck.service.DeckService;
 import com.mtg.deckbuilder.deck.service.SuggestionService;
 import com.mtg.deckbuilder.deck.web.dto.DeckDto;
 import com.mtg.deckbuilder.deck.web.dto.DeckRequest;
+import com.mtg.deckbuilder.deck.scryfall.ScryfallCard;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,6 +52,41 @@ class DeckControllerTest {
 
   @MockBean
   private CategoryTemplateService templateService;
+
+  private static ScryfallCard card(String id, String name) {
+    return new ScryfallCard(id, name, "{1}", 1, List.of(), List.of(), "Artifact", "",
+        null, null, null, "LTC", "uncommon", Map.of(), null);
+  }
+
+  @Test
+  void namedLookupAcceptsAFuzzyName() throws Exception {
+    when(scryfallClient.getCardByFuzzyName("sol rng")).thenReturn(card("sol", "Sol Ring"));
+
+    mockMvc.perform(get("/api/decks/cards/named").param("fuzzy", "sol rng"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.name").value("Sol Ring"));
+  }
+
+  @Test
+  void namedLookupRejectsARequestWithNeitherExactNorFuzzy() throws Exception {
+    mockMvc.perform(get("/api/decks/cards/named"))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void bulkNameResolutionReportsFoundAndMissingNames() throws Exception {
+    when(scryfallClient.getCardsByNames(List.of("Sol Ring", "Nonexistent Card")))
+        .thenReturn(Map.of("sol ring", card("sol", "Sol Ring")));
+    when(scryfallClient.getCardByFuzzyName("Nonexistent Card")).thenReturn(null);
+
+    mockMvc.perform(post("/api/decks/cards/named-collection")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"names\":[\"Sol Ring\",\"Nonexistent Card\"]}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.resolved[0].requested").value("Sol Ring"))
+        .andExpect(jsonPath("$.resolved[0].card.name").value("Sol Ring"))
+        .andExpect(jsonPath("$.unresolved[0]").value("Nonexistent Card"));
+  }
 
   @Test
   void autocompleteReturnsItems() throws Exception {
