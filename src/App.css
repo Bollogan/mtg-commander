@@ -509,27 +509,40 @@
   }
 }
 
-/* ---- Recommendation "apartados" (one block per source: recommander, EDHREC, AI) ---- */
-.recommendation-section {
-  margin-top: 1.25rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--border);
+/* ---- Suggestion sources (one sub-tab each: recommander, EDHREC, AI) ------------- */
+.suggestion-tabs {
+  --bs-nav-tabs-border-color: var(--border);
+  --bs-nav-tabs-link-active-bg: var(--bg-elev-2);
+  --bs-nav-tabs-link-active-color: var(--text);
+  --bs-nav-tabs-link-active-border-color: var(--border) var(--border) var(--bg-elev-2);
+  margin-top: 0.5rem;
 }
-.recommendation-section:first-of-type {
+.suggestion-tabs .nav-link {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.4rem 0.8rem;
+}
+.suggestion-tabs .nav-link:hover { color: var(--text); }
+
+.suggestion-panel {
+  border: 1px solid var(--border);
   border-top: none;
-  padding-top: 0;
+  border-radius: 0 0 var(--radius) var(--radius);
+  background: var(--bg-elev-2);
+  padding: 0.75rem 0.85rem;
 }
-.recommendation-section .type-filter {
+.suggestion-panel .type-filter {
   justify-content: flex-start;
   margin-bottom: 0.5rem;
 }
-.recommendation-section .type-chip {
+.suggestion-panel .type-chip {
   padding: 0.3rem 0.65rem;
   font-size: 0.78rem;
 }
 /* The sidebar is narrow: keep every source's chip row scannable instead of icon-only. */
 @media (max-width: 576px) {
-  .recommendation-section .type-chip__label {
+  .suggestion-panel .type-chip__label {
     display: inline;
   }
 }

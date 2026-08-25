@@ -3,6 +3,7 @@ package com.mtg.deckbuilder.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.mtg.deckbuilder.dto.CardDto;
 import com.mtg.deckbuilder.dto.RecommanderCategoryDto;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -10,7 +11,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,6 +48,8 @@ public class RecommanderService {
    * recommander.cards. Raising this only helps if upstream ever returns more.
    */
   private static final int MAX_RECOMMENDATIONS = 400;
+  /** Upper bound on the decklist forwarded upstream; a Commander deck has 99 distinct cards. */
+  private static final int MAX_DECK_CARDS = 250;
 
   private static final Duration CACHE_TTL = Duration.ofMinutes(30);
 
@@ -103,20 +108,35 @@ public class RecommanderService {
    * full card data via Scryfall.
    */
   public List<CardDto> recommendForCommander(String commanderName, int limit) {
-    List<CardDto> ranked = rankedCards(commanderName);
+    return recommendForCommander(commanderName, limit, List.of());
+  }
+
+  /** As above, with the current decklist so the model can tune to what the deck already does. */
+  public List<CardDto> recommendForCommander(String commanderName, int limit, List<String> deck) {
+    List<CardDto> ranked = rankedCards(commanderName, deck);
     if (limit > 0 && ranked.size() > limit) {
       return List.copyOf(ranked.subList(0, limit));
     }
     return ranked;
   }
 
+  public List<RecommanderCategoryDto> recommendCategories(String commanderName, int perCategory) {
+    return recommendCategories(commanderName, perCategory, List.of());
+  }
+
   /**
    * The same recommendations, split into recommander.cards' apartados and capped at
    * {@code perCategory} cards each. Empty categories are omitted, and the order is the one the
    * site uses (Top Picks first, Lands last).
+   *
+   * <p>Passing {@code deck} switches the model from "what goes with this commander" to "what
+   * goes with <em>this</em> deck": the answers change almost completely (measured on a real
+   * list: 15 of 200 cards in common), come back with far higher confidence, and upstream already
+   * filters out everything the deck runs. An empty list is equivalent to not sending one.
    */
-  public List<RecommanderCategoryDto> recommendCategories(String commanderName, int perCategory) {
-    List<CardDto> ranked = rankedCards(commanderName);
+  public List<RecommanderCategoryDto> recommendCategories(
+      String commanderName, int perCategory, List<String> deck) {
+    List<CardDto> ranked = rankedCards(commanderName, deck);
     if (ranked.isEmpty()) {
       return List.of();
     }
@@ -146,18 +166,19 @@ public class RecommanderService {
     return categories;
   }
 
-  /** The full ranked list for a commander, memoised for {@link #CACHE_TTL}. */
-  private List<CardDto> rankedCards(String commanderName) {
+  /** The full ranked list for a commander (and optional decklist), memoised for {@link #CACHE_TTL}. */
+  private List<CardDto> rankedCards(String commanderName, List<String> deck) {
     if (commanderName == null || commanderName.isBlank()) {
       return List.of();
     }
-    String key = commanderName.trim().toLowerCase(Locale.ROOT);
+    List<String> cleanDeck = cleanDeck(deck);
+    String key = commanderName.trim().toLowerCase(Locale.ROOT) + "|" + deckSignature(cleanDeck);
     CachedRecommendations cached = cache.get(key);
     if (cached != null && !cached.isExpired()) {
       return cached.cards();
     }
 
-    List<String> names = fetchRecommendedNames(commanderName.trim());
+    List<String> names = fetchRecommendedNames(commanderName.trim(), cleanDeck);
     List<CardDto> cards = names.isEmpty() ? List.<CardDto>of() : scryfallService.getCardsByNames(names);
     // Only memoise real answers: an upstream hiccup must not pin an empty list for 30 minutes.
     if (!cards.isEmpty()) {
@@ -166,11 +187,11 @@ public class RecommanderService {
     return cards;
   }
 
-  private List<String> fetchRecommendedNames(String commanderName) {
+  private List<String> fetchRecommendedNames(String commanderName, List<String> deck) {
     try {
       JsonNode response = client.post()
           .uri("/api/decks/recommend/top")
-          .body(Map.of("card_format", "name", "commander", commanderName))
+          .body(Map.of("card_format", "name", "commander", commanderName, "deck", deck))
           .retrieve()
           .body(JsonNode.class);
 
@@ -195,6 +216,37 @@ public class RecommanderService {
       log.warn("recommander request failed for '{}': {}", commanderName, e.getMessage());
       return List.of();
     }
+  }
+
+  /**
+   * Normalises the decklist we forward upstream: no blanks, no duplicates (a basic land counts
+   * once) and bounded, so a pathological request cannot balloon the call.
+   */
+  static List<String> cleanDeck(List<String> deck) {
+    if (deck == null || deck.isEmpty()) {
+      return List.of();
+    }
+    return deck.stream()
+        .filter(name -> name != null && !name.isBlank())
+        .map(String::trim)
+        .distinct()
+        .limit(MAX_DECK_CARDS)
+        .toList();
+  }
+
+  /**
+   * Cache discriminator for a decklist. Order must not matter — the same 99 cards in a different
+   * order is the same query — so the names are sorted before hashing.
+   */
+  static String deckSignature(List<String> deck) {
+    if (deck.isEmpty()) {
+      return "no-deck";
+    }
+    String joined = deck.stream()
+        .map(name -> name.toLowerCase(Locale.ROOT))
+        .sorted()
+        .collect(Collectors.joining("\u0000"));
+    return UUID.nameUUIDFromBytes(joined.getBytes(StandardCharsets.UTF_8)).toString();
   }
 
   /**

@@ -54,6 +54,23 @@ class RecommanderServiceCategoryTest {
   }
 
   @Test
+  void deckSignatureIgnoresOrderButNotContents() {
+    // The same 99 cards shuffled is the same query, so it must reuse the cached answer.
+    assertThat(RecommanderService.deckSignature(List.of("Sol Ring", "Command Tower")))
+        .isEqualTo(RecommanderService.deckSignature(List.of("Command Tower", "Sol Ring")));
+    assertThat(RecommanderService.deckSignature(List.of("Sol Ring")))
+        .isNotEqualTo(RecommanderService.deckSignature(List.of("Sol Ring", "Command Tower")));
+    assertThat(RecommanderService.deckSignature(List.of())).isEqualTo("no-deck");
+  }
+
+  @Test
+  void cleanDeckDropsBlanksAndDuplicates() {
+    assertThat(RecommanderService.cleanDeck(List.of("Sol Ring", " Sol Ring ", "", "  ", "Forest")))
+        .containsExactly("Sol Ring", "Forest");
+    assertThat(RecommanderService.cleanDeck(null)).isEmpty();
+  }
+
+  @Test
   void separatesUtilityLandsFromPlainManaLands() {
     assertThat(RecommanderService.categoryOf(
         card("Command Tower", "Land", "{T}: Add one mana of any color in your commander's color identity.")))

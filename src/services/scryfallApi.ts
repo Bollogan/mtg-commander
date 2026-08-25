@@ -199,16 +199,20 @@ export const fetchTopCommanders = async (limit = 20): Promise<TopCommander[]> =>
  */
 export const fetchRecommanderCategories = async (
   commander: string,
-  perCategory = 50
+  perCategory = 50,
+  deck: string[] = []
 ): Promise<RecommanderCategory[]> => {
   if (!commander) {
     return [];
   }
+  const url = `${API_BASE}/api/scryfall/recommander/categories`;
   try {
-    const response = await axios.get<RecommanderCategory[]>(
-      `${API_BASE}/api/scryfall/recommander/categories`,
-      { params: { commander, perCategory } }
-    );
+    // With a decklist the recommender answers "what goes with *this* deck" instead of "what goes
+    // with this commander", and upstream already leaves out everything the deck runs. The list is
+    // far too long for a query string, so that variant is a POST.
+    const response = deck.length > 0
+      ? await axios.post<RecommanderCategory[]>(url, { commander, deck, perCategory })
+      : await axios.get<RecommanderCategory[]>(url, { params: { commander, perCategory } });
     return response.data || [];
   } catch (error) {
     console.error('Error fetching recommander categories:', error);

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Badge, Button, Spinner, Stack } from 'react-bootstrap';
+import { Badge, Button, Nav, Spinner, Stack } from 'react-bootstrap';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
@@ -9,8 +10,6 @@ import { CardTile } from './CardTile';
 import {
   fetchEdhrecCommanderCategoriesClient,
   fetchRecommanderCategories,
-  type EdhrecCategory,
-  type RecommanderCategory,
 } from '../../services/scryfallApi';
 import { recommanderCategoryIcon, recommanderCategoryLabel } from '../../utils/recommanderCategories';
 import type { Card } from '../../types/cardType';
@@ -23,10 +22,22 @@ interface Group {
   cards: Card[];
 }
 
+type SourceId = 'recommander' | 'edhrec' | 'ai';
+
 /** Cards shown at once inside a source's selected group. */
 const CARDS_PER_GROUP = 12;
 /** How many cards to pull per recommander apartado — the panel is a sidebar, not a full page. */
 const RECOMMANDER_PER_CATEGORY = 24;
+/**
+ * How long to wait after the last decklist edit before asking the recommender again. Every edit
+ * changes the answer, so without this a burst of card additions would be a burst of upstream
+ * calls against a rate-limited public API.
+ */
+const DECK_DEBOUNCE_MS = 2000;
+const CACHE_MS = 1000 * 60 * 30;
+
+/** Categories that are not part of the deck the recommender should be reasoning about. */
+const EXCLUDED_CATEGORIES = new Set(['Sideboard', 'Maybeboard']);
 
 const slugify = (name: string): string =>
   name
@@ -52,45 +63,61 @@ const edhrecIcon = (tag: string, header: string): string => {
   return '•';
 };
 
+/** Settles on a value only once it has stopped changing for `delayMs`. */
+const useDebounced = <T,>(value: T, delayMs: number): T => {
+  const [settled, setSettled] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setSettled(value), delayMs);
+    return () => clearTimeout(timer);
+  }, [value, delayMs]);
+  return settled;
+};
+
 export const SynergyPanel = ({ deckId }: { deckId: string | null }) => {
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const { current, suggestions, draft } = useAppSelector((s) => s.deck);
   const synergies = current?.stats.synergies ?? [];
+  const [source, setSource] = useState<SourceId>('recommander');
+
   const qtyById = useMemo(() => {
     const map = new Map<string, number>();
     draft.cards.forEach((c) => map.set(c.scryfallId, c.qty));
     return map;
   }, [draft.cards]);
 
-  const [edhrec, setEdhrec] = useState<EdhrecCategory[]>([]);
-  const [edhrecLoading, setEdhrecLoading] = useState(false);
-  const [recommander, setRecommander] = useState<RecommanderCategory[]>([]);
-  const [recommanderLoading, setRecommanderLoading] = useState(false);
+  const isCommander = Boolean(draft.format === 'commander' && draft.commanderName);
 
-  const isCommander = draft.format === 'commander' && draft.commanderName;
+  // Sorted and newline-joined so the value is a stable query key: the same 99 cards in a
+  // different order must not look like a different deck.
+  const deckSignature = useMemo(() => {
+    if (!isCommander) return '';
+    return draft.cards
+      .filter((c) => !EXCLUDED_CATEGORIES.has(c.category ?? '') && c.name !== draft.commanderName)
+      .map((c) => c.name)
+      .sort()
+      .join('\n');
+  }, [draft.cards, draft.commanderName, isCommander]);
 
-  useEffect(() => {
-    if (!isCommander) {
-      setEdhrec([]);
-      return;
-    }
-    setEdhrecLoading(true);
-    fetchEdhrecCommanderCategoriesClient(slugify(draft.commanderName))
-      .then(setEdhrec)
-      .finally(() => setEdhrecLoading(false));
-  }, [draft.commanderName, draft.format, isCommander]);
+  const settledDeck = useDebounced(deckSignature, DECK_DEBOUNCE_MS);
 
-  useEffect(() => {
-    if (!isCommander) {
-      setRecommander([]);
-      return;
-    }
-    setRecommanderLoading(true);
-    fetchRecommanderCategories(draft.commanderName, RECOMMANDER_PER_CATEGORY)
-      .then(setRecommander)
-      .finally(() => setRecommanderLoading(false));
-  }, [draft.commanderName, draft.format, isCommander]);
+  const { data: recommander = [], isFetching: recommanderLoading } = useQuery({
+    queryKey: ['recommander-categories', draft.commanderName, settledDeck],
+    queryFn: () => fetchRecommanderCategories(
+      draft.commanderName,
+      RECOMMANDER_PER_CATEGORY,
+      settledDeck ? settledDeck.split('\n') : [],
+    ),
+    enabled: isCommander,
+    staleTime: CACHE_MS,
+  });
+
+  const { data: edhrec = [], isFetching: edhrecLoading } = useQuery({
+    queryKey: ['edhrec-categories', draft.commanderName],
+    queryFn: () => fetchEdhrecCommanderCategoriesClient(slugify(draft.commanderName)),
+    enabled: isCommander,
+    staleTime: CACHE_MS,
+  });
 
   const addById = (scryfallId: string) => {
     dispatch(fetchCardById(scryfallId))
@@ -129,6 +156,9 @@ export const SynergyPanel = ({ deckId }: { deckId: string | null }) => {
     onRemove: (id: string) => dispatch(removeCardFromDraft(id)),
   };
 
+  const noCommander = t('builder.noSuggestionsCommander', 'Pick a commander to get recommendations.');
+  const tunedToDeck = settledDeck.length > 0;
+
   return (
     <div>
       {synergies.length > 0 ? (
@@ -143,65 +173,87 @@ export const SynergyPanel = ({ deckId }: { deckId: string | null }) => {
         <p className="text-muted small">{t('builder.synergyHint', 'Save the deck to compute synergies from card text.')}</p>
       )}
 
-      <RecommendationSection
-        title={t('builder.recommanderTitle', 'Recommander')}
-        subtitle={t('builder.recommanderSource', 'Based on real decklists · recommander.cards')}
-        groups={recommanderGroups}
-        loading={recommanderLoading}
-        emptyMessage={isCommander
-          ? t('builder.recommanderEmpty', 'No recommander suggestions for this commander.')
-          : t('builder.noSuggestionsCommander', 'Pick a commander to get recommendations.')}
-        actions={cardActions}
-      />
+      <Nav
+        variant="tabs"
+        className="suggestion-tabs"
+        activeKey={source}
+        onSelect={(key) => setSource((key as SourceId) ?? 'recommander')}
+      >
+        <Nav.Item>
+          <Nav.Link eventKey="recommander">{t('builder.recommanderTitle', 'Recommander')}</Nav.Link>
+        </Nav.Item>
+        <Nav.Item>
+          <Nav.Link eventKey="edhrec">{t('builder.edhrecTitle', 'EDHREC')}</Nav.Link>
+        </Nav.Item>
+        <Nav.Item>
+          <Nav.Link eventKey="ai">{t('builder.aiSuggestions', 'AI suggestions')}</Nav.Link>
+        </Nav.Item>
+      </Nav>
 
-      <RecommendationSection
-        title={t('builder.edhrecTitle', 'EDHREC')}
-        subtitle={t('builder.edhrecSource', 'Most-played cards by category · edhrec.com')}
-        groups={edhrecGroups}
-        loading={edhrecLoading}
-        emptyMessage={isCommander
-          ? t('builder.edhrecEmpty', 'No EDHREC categories for this commander.')
-          : t('builder.noSuggestionsCommander', 'Pick a commander to get recommendations.')}
-        actions={cardActions}
-      />
+      <div className="suggestion-panel">
+        {source === 'recommander' && (
+          <RecommendationSection
+            subtitle={tunedToDeck
+              ? t('builder.recommanderTuned', 'Tuned to your decklist · recommander.cards')
+              : t('builder.recommanderSource', 'Based on real decklists · recommander.cards')}
+            groups={recommanderGroups}
+            loading={recommanderLoading}
+            emptyMessage={isCommander
+              ? t('builder.recommanderEmpty', 'No recommander suggestions for this commander.')
+              : noCommander}
+            actions={cardActions}
+          />
+        )}
 
-      <div className="recommendation-section">
-        <div className="d-flex justify-content-between align-items-center">
-          <div>
-            <h6 className="mb-0">{t('builder.aiSuggestions', 'AI suggestions')}</h6>
-            <span className="text-muted small">
-              {t('builder.aiSource', 'Computed from your current decklist')}
-            </span>
-          </div>
-          <Button
-            size="sm"
-            variant="outline-primary"
-            disabled={!deckId}
-            onClick={() => deckId && dispatch(fetchSuggestions(deckId))}
-          >
-            {t('builder.getSuggestions', 'Get suggestions')}
-          </Button>
-        </div>
-        {suggestions.length > 0 ? (
-          <div className="card-grid-4 mt-2">
-            {suggestions.map((suggestion) => (
-              <CardTile
-                key={`ai-${suggestion.scryfallId}`}
-                scryfallId={suggestion.scryfallId}
-                name={suggestion.name}
-                imageUrl={suggestion.imageUrl}
-                qty={cardActions.qtyOf(suggestion.scryfallId)}
-                caption={suggestion.reason}
-                addLabel={t('builder.addToDeck', '+ Add')}
-                onAdd={() => cardActions.onAdd(suggestion.scryfallId)}
-                onInc={() => cardActions.onInc(suggestion.scryfallId)}
-                onDec={() => cardActions.onDec(suggestion.scryfallId)}
-                onRemove={() => cardActions.onRemove(suggestion.scryfallId)}
-              />
-            ))}
-          </div>
-        ) : (
-          <p className="text-muted small mt-2 mb-0">{t('builder.noSuggestions', 'No suggestions yet.')}</p>
+        {source === 'edhrec' && (
+          <RecommendationSection
+            subtitle={t('builder.edhrecSource', 'Most-played cards by category · edhrec.com')}
+            groups={edhrecGroups}
+            loading={edhrecLoading}
+            emptyMessage={isCommander
+              ? t('builder.edhrecEmpty', 'No EDHREC categories for this commander.')
+              : noCommander}
+            actions={cardActions}
+          />
+        )}
+
+        {source === 'ai' && (
+          <>
+            <div className="d-flex justify-content-between align-items-center gap-2">
+              <span className="text-muted small">
+                {t('builder.aiSource', 'Computed from your current decklist')}
+              </span>
+              <Button
+                size="sm"
+                variant="outline-primary"
+                disabled={!deckId}
+                onClick={() => deckId && dispatch(fetchSuggestions(deckId))}
+              >
+                {t('builder.getSuggestions', 'Get suggestions')}
+              </Button>
+            </div>
+            {suggestions.length > 0 ? (
+              <div className="card-grid-4 mt-2">
+                {suggestions.map((suggestion) => (
+                  <CardTile
+                    key={`ai-${suggestion.scryfallId}`}
+                    scryfallId={suggestion.scryfallId}
+                    name={suggestion.name}
+                    imageUrl={suggestion.imageUrl}
+                    qty={cardActions.qtyOf(suggestion.scryfallId)}
+                    caption={suggestion.reason}
+                    addLabel={t('builder.addToDeck', '+ Add')}
+                    onAdd={() => cardActions.onAdd(suggestion.scryfallId)}
+                    onInc={() => cardActions.onInc(suggestion.scryfallId)}
+                    onDec={() => cardActions.onDec(suggestion.scryfallId)}
+                    onRemove={() => cardActions.onRemove(suggestion.scryfallId)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted small mt-2 mb-0">{t('builder.noSuggestions', 'No suggestions yet.')}</p>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -209,7 +261,6 @@ export const SynergyPanel = ({ deckId }: { deckId: string | null }) => {
 };
 
 interface SectionProps {
-  title: string;
   subtitle: string;
   groups: Group[];
   loading: boolean;
@@ -224,11 +275,11 @@ interface SectionProps {
 }
 
 /**
- * One recommendation source rendered as its own "apartado": a header, a chip row of the
- * source's own categories, and the cards of the selected category. Keeping EDHREC and
- * recommander.cards in separate sections makes clear which engine suggested what.
+ * One recommendation source: a chip row of that source's own categories and the cards of the
+ * selected one. Keeping EDHREC and recommander.cards on separate tabs makes clear which engine
+ * suggested what, and stops one source's categories being mistaken for the other's.
  */
-function RecommendationSection({ title, subtitle, groups, loading, emptyMessage, actions }: SectionProps) {
+function RecommendationSection({ subtitle, groups, loading, emptyMessage, actions }: SectionProps) {
   const { t } = useTranslation();
   const [activeId, setActiveId] = useState<string | null>(null);
   // Which category is expanded, rather than a boolean: switching category then collapses on its
@@ -242,11 +293,8 @@ function RecommendationSection({ title, subtitle, groups, loading, emptyMessage,
   const visible = showAll ? active?.cards ?? [] : (active?.cards ?? []).slice(0, CARDS_PER_GROUP);
 
   return (
-    <div className="recommendation-section">
-      <div>
-        <h6 className="mb-0">{title}</h6>
-        <span className="text-muted small">{subtitle}</span>
-      </div>
+    <div>
+      <span className="text-muted small">{subtitle}</span>
 
       {loading && (
         <div className="text-center my-3">
@@ -260,7 +308,7 @@ function RecommendationSection({ title, subtitle, groups, loading, emptyMessage,
 
       {!loading && active && (
         <>
-          <div className="type-filter mt-2" role="tablist" aria-label={title}>
+          <div className="type-filter mt-2" role="tablist" aria-label={subtitle}>
             {groups.map((group) => (
               <button
                 type="button"

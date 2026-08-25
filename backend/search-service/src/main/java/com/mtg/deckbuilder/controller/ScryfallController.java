@@ -83,4 +83,21 @@ public class ScryfallController {
         @RequestParam(value = "perCategory", defaultValue = "50") int perCategory) {
       return recommanderService.recommendCategories(commander, perCategory);
     }
+
+    /**
+     * Deck-aware variant: the caller sends the decklist it already has, and the recommender tunes
+     * its answers to that list instead of to the commander alone. A POST because a Commander
+     * decklist is ~99 names — too much for a query string.
+     */
+    @PostMapping("/recommander/categories")
+    public List<RecommanderCategoryDto> recommanderCategoriesForDeck(
+        @RequestBody RecommanderDeckRequest request) {
+      return recommanderService.recommendCategories(
+          request.commander(),
+          request.perCategory() == null ? RecommanderService.DEFAULT_PER_CATEGORY : request.perCategory(),
+          request.deck() == null ? List.of() : request.deck());
+    }
+
+    /** Commander plus the names already in the deck; {@code deck} may be empty or absent. */
+    public record RecommanderDeckRequest(String commander, List<String> deck, Integer perCategory) {}
 }
