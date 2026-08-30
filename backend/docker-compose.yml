@@ -87,7 +87,7 @@ services:
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
       # socket.io ws upgrade is proxied straight to the game-service netty-socketio port.
-      GAME_SOCKETIO_URI: ws://game-service:9092
+      GAME_SOCKETIO_URI: http://game-service:9092
     depends_on:
       eureka-server:
         condition: service_healthy

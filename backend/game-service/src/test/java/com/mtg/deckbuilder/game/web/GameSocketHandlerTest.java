@@ -8,32 +8,12 @@ import com.mtg.deckbuilder.game.domain.GameAction;
 import com.mtg.deckbuilder.game.domain.GameState;
 import com.mtg.deckbuilder.game.engine.GameEngine;
 import com.mtg.deckbuilder.game.service.GameService;
-import com.mtg.deckbuilder.game.store.GameStateStore;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import com.mtg.deckbuilder.game.store.InMemoryGameStateStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /** Unit-tests the socket.io action handler logic without starting Netty. */
 class GameSocketHandlerTest {
-
-  /** In-memory store so no Redis is needed. */
-  private static class InMemoryStore implements GameStateStore {
-    private final Map<String, GameState> data = new HashMap<>();
-
-    @Override public void save(GameState state) {
-      data.put(state.getRoomId(), state);
-    }
-
-    @Override public Optional<GameState> find(String roomId) {
-      return Optional.ofNullable(data.get(roomId));
-    }
-
-    @Override public boolean exists(String roomId) {
-      return data.containsKey(roomId);
-    }
-  }
 
   private GameService gameService;
   private GameSocketHandler handler;
@@ -41,10 +21,13 @@ class GameSocketHandlerTest {
 
   @BeforeEach
   void setup() {
-    gameService = new GameService(new InMemoryStore(), new GameEngine(), null);
+    gameService = new GameService(new InMemoryGameStateStore(), new GameEngine(), null);
     handler = new GameSocketHandler(null, gameService, null);
-    // Creator "u1" gets a generic 60-card library (deckId null → no Feign call).
-    roomId = gameService.createRoom("u1", "Alice", "Game", 4, null).getRoomId();
+    // Creator "u1" plays deckless, so start() falls back to the generic 60-card library and no
+    // Feign call is made.
+    roomId = gameService.createRoom("u1", "Alice", "Game", 4, null, false).getRoomId();
+    gameService.setReady(roomId, "u1", true);
+    gameService.startGame(roomId, "u1");
   }
 
   @Test
@@ -68,5 +51,15 @@ class GameSocketHandlerTest {
     assertThatThrownBy(() -> handler.applyForUser("u1", "no-such-room",
         new GameAction(ActionType.DRAW, "u1", null, 1)))
         .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void rejectsActionWhileTheRoomIsStillInTheLobby() {
+    String lobby = gameService.createRoom("u2", "Bob", "Not started", 4, null, false).getRoomId();
+
+    assertThatThrownBy(() -> handler.applyForUser("u2", lobby,
+        new GameAction(ActionType.DRAW, "u2", null, 1)))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("not started");
   }
 }

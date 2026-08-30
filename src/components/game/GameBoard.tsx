@@ -1,10 +1,12 @@
 import { useDrag, useDrop } from 'react-dnd';
 import { Badge, Button, Card, Stack } from 'react-bootstrap';
+import { useTranslation } from 'react-i18next';
 import type { GameCard, PlayerState } from '../../features/game/gameSlice';
 
 const CARD_DND = 'GAME_CARD';
 
 const HandCard = ({ card }: { card: GameCard }) => {
+  const { t } = useTranslation();
   const [{ isDragging }, dragRef] = useDrag(
     () => ({
       type: CARD_DND,
@@ -18,7 +20,7 @@ const HandCard = ({ card }: { card: GameCard }) => {
       ref={dragRef as unknown as React.Ref<HTMLSpanElement>}
       className="badge bg-light text-dark border me-1 mb-1"
       style={{ cursor: 'grab', opacity: isDragging ? 0.4 : 1 }}
-      title="Drag onto the battlefield to play"
+      title={t('game.dragHint')}
     >
       {card.name}
     </span>
@@ -32,8 +34,15 @@ interface BoardProps {
   onTapCard: (instanceId: string) => void;
 }
 
-/** A single player's zones. Hand cards drag onto the battlefield; battlefield cards tap. */
+/**
+ * A single player's zones. Hand cards drag onto the battlefield; battlefield cards tap.
+ *
+ * Zone sizes come from `librarySize`/`handSize` rather than the arrays: the server only sends the
+ * contents a given viewer is entitled to, so an opponent's hand arrives empty with a size beside
+ * it and is drawn face-down.
+ */
 export const GameBoard = ({ player, isActive, onPlayCard, onTapCard }: BoardProps) => {
+  const { t } = useTranslation();
   const [{ isOver }, dropRef] = useDrop(
     () => ({
       accept: CARD_DND,
@@ -43,23 +52,28 @@ export const GameBoard = ({ player, isActive, onPlayCard, onTapCard }: BoardProp
     [onPlayCard],
   );
 
+  const handIsMine = player.hand.length > 0 || player.handSize === 0;
+
   return (
     <Card className={`deck-card mb-3 ${isActive ? 'border-primary' : ''}`}>
       <Card.Body>
         <Stack direction="horizontal" gap={2} className="mb-2">
           <Card.Title className="mb-0">{player.playerName}</Card.Title>
-          {isActive && <Badge bg="primary">Active</Badge>}
+          {isActive && <Badge bg="primary">{t('game.active')}</Badge>}
           <Badge bg="danger" className="ms-auto">♥ {player.life}</Badge>
-          <Badge bg="secondary">Library {player.library.length}</Badge>
-          <Badge bg="secondary">GY {player.graveyard.length}</Badge>
+          <Badge bg="secondary">{t('game.library')} {player.librarySize}</Badge>
+          <Badge bg="secondary">{t('game.graveyard')} {player.graveyard.length}</Badge>
         </Stack>
 
         <div className="mb-2">
-          <strong className="small text-muted">Hand ({player.hand.length})</strong>
+          <strong className="small text-muted">{t('game.hand')} ({player.handSize})</strong>
           <div>
-            {player.hand.length === 0
-              ? <span className="text-muted small">empty</span>
-              : player.hand.map((c) => <HandCard key={c.instanceId} card={c} />)}
+            {player.handSize === 0 && <span className="text-muted small">{t('game.empty')}</span>}
+            {handIsMine
+              ? player.hand.map((c) => <HandCard key={c.instanceId} card={c} />)
+              : Array.from({ length: player.handSize }, (_, i) => (
+                  <span key={i} className="game-card-back" aria-hidden="true" />
+                ))}
           </div>
         </div>
 
@@ -73,10 +87,12 @@ export const GameBoard = ({ player, isActive, onPlayCard, onTapCard }: BoardProp
             outline: isOver ? '2px dashed var(--accent)' : '1px dashed rgba(255,255,255,0.14)',
           }}
         >
-          <strong className="small text-muted">Battlefield ({player.battlefield.length})</strong>
+          <strong className="small text-muted">
+            {t('game.battlefield')} ({player.battlefield.length})
+          </strong>
           <div>
             {player.battlefield.length === 0
-              ? <span className="text-muted small d-block">drop cards here</span>
+              ? <span className="text-muted small d-block">{t('game.dropHere')}</span>
               : player.battlefield.map((c) => (
                   <Button
                     key={c.instanceId}
@@ -84,7 +100,7 @@ export const GameBoard = ({ player, isActive, onPlayCard, onTapCard }: BoardProp
                     variant={c.tapped ? 'secondary' : 'outline-secondary'}
                     className="me-1 mb-1"
                     onClick={() => onTapCard(c.instanceId)}
-                    title="Click to tap/untap"
+                    title={t('game.tapHint')}
                   >
                     {c.name}{c.tapped ? ' ⟳' : ''}
                   </Button>

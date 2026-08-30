@@ -8,7 +8,7 @@ import { DecksPage } from './pages/DecksPage';
 import { DeckNewPage } from './pages/DeckNewPage';
 import { DeckDetailPage } from './pages/DeckDetailPage';
 import { DeckBuilderPage } from './pages/DeckBuilderPage';
-import { GameSimulatorPage } from './pages/GameSimulatorPage';
+import { GameSimulatorPage, JoinRoomRedirect } from './pages/GameSimulatorPage';
 import { EventsPage } from './pages/EventsPage';
 import { AccountPage } from './pages/AccountPage';
 import { CardDetailPage } from './pages/CardDetailPage';
@@ -60,6 +60,8 @@ function App() {
           } />
           <Route path="/play" element={<RequireAuth><GameSimulatorPage /></RequireAuth>} />
           <Route path="/play/:roomId" element={<RequireAuth><GameSimulatorPage /></RequireAuth>} />
+          {/* Invite links are shared as /join/CODE; the room page does the actual joining. */}
+          <Route path="/join/:roomId" element={<RequireAuth><JoinRoomRedirect /></RequireAuth>} />
           <Route path="/events" element={<EventsPage />} />
           <Route path="/account" element={<RequireAuth><AccountPage /></RequireAuth>} />
           <Route path="/card/:id" element={<CardDetailPage />} />

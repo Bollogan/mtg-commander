@@ -3250,3 +3250,164 @@
 .pt-zone-list__pos { width: 1.6rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .pt-zone-list__name { flex: 1; min-width: 0; }
 .pt-zone-list__actions { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+
+/* ── Game lobby ────────────────────────────────────────────────────────────── */
+/* Two columns on desktop: the room on the left, a persistent chat rail on the right.
+   Collapses to a single stack on narrow screens so the chat never squeezes the seats. */
+.lobby {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 22rem);
+  gap: 1.5rem;
+  align-items: start;
+  max-width: 76rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+@media (max-width: 900px) {
+  .lobby {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.lobby__main {
+  min-width: 0;
+}
+
+.lobby__side {
+  min-width: 0;
+  position: sticky;
+  top: 1.5rem;
+}
+
+.lobby__side-title {
+  font-family: var(--font-display), serif;
+  font-size: 1.05rem;
+  margin-bottom: 0.6rem;
+}
+
+.lobby__code {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 1.35rem;
+  letter-spacing: 0.22em;
+  color: var(--accent);
+  background: rgba(216, 162, 74, 0.1);
+  border: 1px solid rgba(216, 162, 74, 0.3);
+  border-radius: 8px;
+  padding: 0.35rem 0.8rem;
+}
+
+.lobby__link {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+  word-break: break-all;
+}
+
+.lobby__seats {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+}
+
+.lobby__seat {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  padding: 0.6rem 0.2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.lobby__seat:last-child {
+  border-bottom: 0;
+}
+
+/* Presence dot: filled once that player's socket is actually attached. */
+.lobby__dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  flex: none;
+}
+
+.lobby__dot.is-online {
+  background: #4ade80;
+  box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.15);
+}
+
+.lobby__name {
+  font-weight: 600;
+}
+
+.lobby__deck {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* ── Room chat ─────────────────────────────────────────────────────────────── */
+.lobby-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 0.75rem;
+}
+
+.lobby-chat__log {
+  max-height: 22rem;
+  min-height: 8rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.lobby-chat__line,
+.lobby-chat__system {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.lobby-chat__system {
+  color: rgba(255, 255, 255, 0.42);
+  font-style: italic;
+}
+
+.lobby-chat__author {
+  font-weight: 600;
+  margin-right: 0.35rem;
+}
+
+.lobby-chat__author.is-me {
+  color: var(--accent);
+}
+
+.lobby-chat__time {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.3);
+  margin-right: 0.4rem;
+}
+
+.lobby-chat__text {
+  overflow-wrap: anywhere;
+}
+
+.lobby-chat__form {
+  display: flex;
+  gap: 0.4rem;
+}
+
+/* Face-down stand-in for a hand the viewer is not entitled to see. */
+.game-card-back {
+  display: inline-block;
+  width: 1.4rem;
+  height: 2rem;
+  margin: 0 0.2rem 0.2rem 0;
+  border-radius: 3px;
+  background: linear-gradient(150deg, rgba(216, 162, 74, 0.35), rgba(40, 32, 22, 0.9));
+  border: 1px solid rgba(216, 162, 74, 0.35);
+}

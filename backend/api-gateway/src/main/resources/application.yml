@@ -101,10 +101,22 @@ spring:
 
         # Game socket.io — proxied straight to the game-service netty-socketio port (not via
         # Eureka lb, which resolves the Spring port). No CircuitBreaker: it's a long-lived ws.
+        # The URI is http, NOT ws, on purpose: Gateway's WebsocketRoutingFilter rewrites the scheme
+        # to ws itself when the request carries `Upgrade: websocket`, so one http route serves both
+        # transports. A ws:// URI, by contrast, makes Gateway answer every non-upgrade request with
+        # 400 — which kills socket.io's polling transport, the only one that survives a reverse
+        # proxy that does not forward ws upgrades.
         - id: game-socketio
-          uri: ${GAME_SOCKETIO_URI:ws://game-service:9092}
+          uri: ${GAME_SOCKETIO_URI:http://game-service:9092}
           predicates:
             - Path=/socket.io/**
+          filters:
+            # netty-socketio emits its own CORS headers; without this they stack with the
+            # gateway's and the browser rejects the duplicated header.
+            - name: DedupeResponseHeader
+              args:
+                name: Access-Control-Allow-Origin Access-Control-Allow-Credentials
+                strategy: RETAIN_FIRST
 
         # AI Service
         - id: ai-service

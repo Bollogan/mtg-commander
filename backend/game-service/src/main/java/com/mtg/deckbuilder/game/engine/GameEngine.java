@@ -34,6 +34,7 @@ public class GameEngine {
       case TAP -> toggleTap(player, action.cardInstanceId());
       case MULLIGAN -> londonMulligan(player);
       case END_TURN -> endTurn(state);
+      case ADJUST_LIFE -> adjustLife(player, action.count());
       default -> throw new IllegalArgumentException("Unsupported action: " + action.type());
     }
     return state;
@@ -88,6 +89,14 @@ public class GameEngine {
       GameCard card = player.getHand().remove(player.getHand().size() - 1);
       player.getLibrary().add(card);
     }
+  }
+
+  /** Applies a signed life delta. Commander games swing by 20 at a time; no bounds here. */
+  private void adjustLife(PlayerState player, Integer delta) {
+    if (delta == null || delta == 0) {
+      throw new IllegalArgumentException("A life change needs a non-zero delta");
+    }
+    player.setLife(player.getLife() + delta);
   }
 
   private void endTurn(GameState state) {

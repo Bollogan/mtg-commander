@@ -54,7 +54,12 @@ Escala Likert 1–5 (1 = totalmente en desacuerdo, 5 = totalmente de acuerdo):
 
 ## Resultados
 
-> _Pendiente de ejecución de las sesiones._ Completar la tabla y la media.
+> **Evaluación heurística ejecutada el 2026-08-25** (11 hallazgos) y recorrido cognitivo
+> analítico sobre las 8 tareas: ver
+> [`evaluacion-usabilidad-resultados.md`](evaluacion-usabilidad-resultados.md).
+>
+> _Las sesiones con usuarios siguen pendientes._ La tabla siguiente y la media SUS solo
+> pueden rellenarse con participantes reales.
 
 | Participante | Perfil | SUS | Notas cualitativas |
 |--------------|--------|-----|--------------------|

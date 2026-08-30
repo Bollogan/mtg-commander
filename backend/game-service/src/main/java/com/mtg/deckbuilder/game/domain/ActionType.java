@@ -7,5 +7,7 @@ public enum ActionType {
   PLAY_CARD,
   TAP,
   MULLIGAN,
-  END_TURN
+  END_TURN,
+  /** Life total change; {@code count} carries the (signed) delta. */
+  ADJUST_LIFE
 }
